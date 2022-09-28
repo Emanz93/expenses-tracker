@@ -1,0 +1,40 @@
+{
+    "G_SERVICE_KEYFILE": "g_service_key.json",
+    "G_SHEET_NAME": "Expenses",
+    "GENERIC_HEADER": {
+        "Date": 0,
+        "Payee": 1,
+        "Reference": 2,
+        "Category": 3,
+        "Amount": 4
+    },
+    "GENERIC_HEADER_DTYPE": {
+        "Date": "str",
+        "Payee": "str",
+        "Reference": "str",
+        "Category": "str",
+        "Amount": "float"
+    },
+    "N26_HEADER_LINE": {
+        "Date": 0,
+        "Payee": 1,
+        "Account number": 2,
+        "Transaction type": 3,
+        "Payment reference": 4,
+        "Category": 5,
+        "Amount (EUR)": 6,
+        "Amount (Foreign Currency)":7,
+        "Type Foreign Currency":8,
+        "Exchange Rate":9
+    },
+    "ING_HEADER_LINE": {
+        "Buchung": 0,
+        "Valuta": 1,
+        "Auftraggeber/Empfanger": 2,
+        "Buchungstext": 3,
+        "Verwendungszweck": 4,
+        "Saldo": 5,
+        "Wahrung": 6,
+        "Betrag": 7
+    }
+}
