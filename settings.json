@@ -21,11 +21,10 @@
         "Account number": 2,
         "Transaction type": 3,
         "Payment reference": 4,
-        "Category": 5,
-        "Amount (EUR)": 6,
-        "Amount (Foreign Currency)":7,
-        "Type Foreign Currency":8,
-        "Exchange Rate":9
+        "Amount (EUR)": 5,
+        "Amount (Foreign Currency)": 6,
+        "Type Foreign Currency": 7,
+        "Exchange Rate": 8
     },
     "ING_HEADER_LINE": {
         "Buchung": 0,
