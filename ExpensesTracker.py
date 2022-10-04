@@ -6,7 +6,7 @@ import pandas as pd
 
 """ ExpensesTracker """
 
-def read_json(json_path):
+def read_json(json_path):   
     """ Read a json file.
     Parameters:
         json_path: String. Path of the json file.
@@ -135,10 +135,10 @@ settings = read_json('settings.json')
 
 if __name__ == '__main__':
     # input cvs file
-    in_cvs_path = "n26-csv-transactions.csv"
+    in_cvs_path = "infiles/n26-csv-transactions.csv"
     df_in = ingest_N26_csv(in_cvs_path)
 
-    # in_cvs_path = "Umsatzanzeige_ING.csv"
+    # in_cvs_path = "infiles/Umsatzanzeige_ING.csv"
     # df_in = ingest_ING_csv(in_cvs_path)
 
     print("Input dataframe:")
@@ -156,7 +156,7 @@ if __name__ == '__main__':
     for x in sh.worksheets():
         worksheets[x.title] = x
 
-
+    # loop each year
     for year in sorted(unique_years_in):
         print('year={}'.format(year))
         wsh = None
