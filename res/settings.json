@@ -1,0 +1,41 @@
+{
+    "G_SERVICE_KEYFILE": "res/g_service_key.json",
+    "G_SHEET_NAME": "Expenses",
+    "MODEL_ENCODER_PATH": "res/models/encoder",
+    "MODEL_CLASSIFIER_PATH": "res/models/text_calssifier",
+    "MODEL_VOCABOULARY_PATH": "res/models/vocaboulary",
+    "GENERIC_HEADER": {
+        "date": 0,
+        "payee": 1,
+        "reference": 2,
+        "amount": 3
+    },
+    "GENERIC_HEADER_DTYPE": {
+        "date": "str",
+        "payee": "str",
+        "reference": "str",
+        "amount": "float"
+    },
+    "N26_HEADER_LINE": {
+        "Date": 0,
+        "Payee": 1,
+        "Account number": 2,
+        "Transaction type": 3,
+        "Payment reference": 4,
+        "Amount (EUR)": 5,
+        "Amount (Foreign Currency)": 6,
+        "Type Foreign Currency": 7,
+        "Exchange Rate": 8
+    },
+    "ING_HEADER_LINE": {
+        "Buchung": 0,
+        "Valuta": 1,
+        "Auftraggeber/Empfanger": 2,
+        "Buchungstext": 3,
+        "Verwendungszweck": 4,
+        "Saldo": 5,
+        "Wahrung": 6,
+        "Betrag": 7,
+        "Wahrung2": 8
+    }
+}
