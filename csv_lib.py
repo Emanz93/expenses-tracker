@@ -1,6 +1,7 @@
 import csv
 import re
 import pandas as pd
+from datetime import datetime
 
 """ Library for the managing of the input files in CSV format. """
 
@@ -17,6 +18,15 @@ def _preprocess(s):
     s = s.lower() # to lowercase
     return s
 
+def _get_month_int(d):
+    """ Takes in input a string containing a date and returns the month in integer.
+    Parameter:
+        d: String. Date
+    Returns:
+        m: Integer. Month
+    """
+    dt = datetime.strptime(d, '%Y-%m-%d')
+    return dt.month
 
 def check_header(csv_lines, settings):
     """ Check if the header line is the expected one and understand also which bank it belongs.

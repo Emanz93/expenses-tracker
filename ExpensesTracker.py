@@ -1,11 +1,16 @@
-import gspread
-import joblib
+import os
+import sys
 import json
-from csv_lib import _preprocess
-import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
 
-from csv_lib import ingest_N26_csv, ingest_ING_csv, _preprocess
+# libraries
+from gdrive_lib import import_expences, import_payslips
+
+
+# tkinter
+import tkinter as tk
+import tkinter.ttk as ttk
+from tkinter import font
+from tkinter import filedialog, simpledialog, messagebox
 
 """ ExpensesTracker """
 
@@ -21,106 +26,175 @@ def read_json(json_path):
     return d
 
 
-def google_services():
-    """ Connect with the google services. """
-    sa = gspread.service_account(filename=settings['G_SERVICE_KEYFILE'])
-    # open the google sheet and select the correct worksheet
-    sh = sa.open(settings['G_SHEET_NAME'])
-    print("Connected with Google Sheet: {}".format(settings['G_SHEET_NAME']))
-    return sh
-
-
-def classify(df):
-    """ Perform the classification task. It uses the classified model saved in a pickle file along with the 
-    hot encoder used for the target label unary transformation. It adds the 'category' column to the input 
-    data frame and returns it.
-    Parameter:
-        df: pd.DataFrame. Input dataframe with the category feature empty.
-    Returns:
-        df: pd.DataFrame. Output dataframe with the category feature populated.
-    """
-    # load the required models
-    with open('models/text_classifier', 'rb') as trained_model:
-        classifier = joblib.load(trained_model)
-    with open('models/encoder', 'rb') as picklefile:
-        encoder = joblib.load(picklefile)
-    with open('models/vocaboulary', 'rb') as picklefile:
-        vocaboulary = joblib.load(picklefile)
-
-    # preprocessing
-    transactions = df.copy()
-    transactions = transactions.drop(['date'], axis=1)
-    transactions['payee'] = transactions['payee'].apply(_preprocess)
-    transactions['reference'] = transactions['reference'].apply(_preprocess)
-
-    # Vectorizer
-    for feature in ['payee', 'reference']:
-        vectorizer = TfidfVectorizer(vocabulary=vocaboulary[feature])
-        X = vectorizer.fit_transform(transactions[feature]).toarray()
-        x_in = pd.DataFrame(X)
-        x_in.columns = x_in.columns.astype(str)
-        print(feature)
-        transactions = transactions.drop(feature, axis=1)
-        transactions = pd.concat([transactions, x_in], axis=1)
+class App:
+    """ Class that represent the GUI. """
     
-    # perform the prediction
-    y_pred = classifier.predict(transactions)
+    def __init__(self, r):
+        """ Constructor of the graphical user interface """
+        self.root = r
+        
+        self.settings = read_json('res/settings.json')
+        
+        # screen settings
+        self.width = 600
+        self.height = 350
+        self._set_screen_settings(title="Expences Management", width=self.width, height=self.height)
+
+        # set the style
+        self._set_azure_style()
+
+        # populate the GUI
+        self._create_main_frame()
+
+    def _set_screen_settings(self, title="Title", width=500, height=500):
+        """ Set the screen settings and the window placement.
+            Parameters:
+                title: String. Default title.
+                width: Integer. Default width of the main view.
+                height: Integer. Default height of the main view.
+        """
+        # setting title
+        self.root.title(title)
+
+        # set the icon
+        self.png_icon_path = 'res/wallet.png'
+        self.ico_icon_path = 'res/wallet.ico'
+        if not os.path.isfile(self.png_icon_path):
+            # if not locally called, use the absolute path.
+            self.png_icon_path = os.path.join(os.path.dirname(sys.argv[0]), self.png_icon_path)
+            self.ico_icon_path = os.path.join(os.path.dirname(sys.argv[0]), self.ico_icon_path)
+        self.root.tk.call('wm', 'iconphoto', self.root._w, tk.PhotoImage(file=self.png_icon_path))
+
+        # setting window size
+        screenwidth = self.root.winfo_screenwidth()
+        screenheight = self.root.winfo_screenheight()
+        alignstr = '%dx%d+%d+%d' % (width, height,
+                                    (screenwidth - width) / 2, (screenheight - height) / 2)
+        self.root.geometry(alignstr)
+        self.root.resizable(width=False, height=False)
+
+    def _set_azure_style(self):
+        """ Set the Azure Style """
+        self.style = ttk.Style(self.root)
+        style_path = 'res/style/azure.tcl' # if locally called, use local path.
+        if not os.path.isfile(style_path):
+            # if not locally called, use the absolute path.
+            style_path = os.path.join(os.path.dirname(sys.argv[0]), style_path)
+        self.root.tk.call('source', style_path)
+        self.style.theme_use('azure')
+
+    def _create_main_frame(self):
+        """ Create the main frame """
+        self.margin = 20 # margin to be used across the gui
+
+        # Title label
+        highlightFont = font.Font(family='Helvetica', name='appHighlightFont', size=12, weight='bold')
+        title_label = ttk.Label(self.root, text="Expences Management", font=highlightFont)
+        title_height = 32
+        title_label.place(x=(self.width/2)-(self.width/8), y=self.margin, width=200, height=title_height)
+        
+        # Label frames
+        frame_height = 105
+        csv_frame = ttk.Labelframe(self.root, text=' Expenses import ')
+        frame_width = self.width-2*self.margin
+        csv_frame.place(x=self.margin, y=self.margin+title_height, width=frame_width, height=frame_height)
+        payslips_frame = ttk.Labelframe(self.root, text=' Payslips import ')
+        payslips_frame.place(x=self.margin, y=2*self.margin+title_height+frame_height, width=frame_width, height=frame_height)
+
+        # CSV selection section
+        cmp_height = 32 # height of the components
+        excel_label = ttk.Label(csv_frame, text="CSV file:")
+        label_width = 60
+        excel_label.place(x=5, y=5, width=label_width, height=cmp_height)
+
+        self.csv_file_var = tk.StringVar(csv_frame)
+        csv_entry = ttk.Entry(csv_frame, textvariable=self.csv_file_var)
+        entry_width = 400
+        csv_entry.place(x=label_width+10, y=5, width=entry_width, height=cmp_height)
+        
+        select_csv_btn = ttk.Button(csv_frame, text="Select", command=self.select_csv_btn_callback, style='Accentbutton')
+        select_csv_btn.place(x=label_width+10*2+entry_width, y=5, width=70, height=cmp_height)
+
+        import_csv_btn = ttk.Button(csv_frame, text="Import CSV", command=self.import_csv_btn_callback, style='Accentbutton')
+        import_csv_btn.place(x=(frame_width/2)-130, y=15+cmp_height, width=120, height=cmp_height)
+
+        retrain_csv_btn = ttk.Button(csv_frame, text="Retrain Classifier", command=self.retrain_btn_callback, style='Accentbutton')
+        retrain_csv_btn.place(x=(frame_width/2)+10, y=15+cmp_height, width=120, height=cmp_height)
+
+        # Payslips selection section
+        cmp_height = 32 # height of the components
+        excel_label = ttk.Label(payslips_frame, text="Payslip PDF file:")
+        label_width = 90
+        excel_label.place(x=5, y=5, width=label_width, height=cmp_height)
+
+        self.payslip_filename_var = tk.StringVar(payslips_frame)
+        payslip_entry = ttk.Entry(payslips_frame, textvariable=self.payslip_filename_var)
+        entry_width = 370
+        payslip_entry.place(x=label_width+10, y=5, width=entry_width, height=cmp_height)
+        
+        select_payslip_btn = ttk.Button(payslips_frame, text="Select", command=self.select_payslip_btn_callback, style='Accentbutton')
+        select_payslip_btn.place(x=label_width+10*2+entry_width, y=5, width=70, height=cmp_height)
+
+        import_payslip_btn = ttk.Button(payslips_frame, text="Import", command=self.import_payslip_btn_callback, style='Accentbutton')
+        import_payslip_btn.place(x=(frame_width/2)-35, y=15+cmp_height, width=70, height=cmp_height)
+        
+        # Exit button
+        exit_btn = ttk.Button(self.root, text="Exit", command=sys.exit, style='Accentbutton')
+        exit_btn.place(x=(self.width/2)-40, y=self.height-cmp_height-self.margin, width=80, height=cmp_height)
+
+        
+    def select_csv_btn_callback(self):
+        """ Callback to set the source CSV file of the expences. """
+        filename = filedialog.askopenfilename(title="Select expences file in CSV format...")
+        if os.path.isfile(filename):
+            self.csv_filename = filename
+            self.csv_file_var.set(filename)
+        else:
+            messagebox.showerror("Error", "No input file selected.")
+
+    def import_csv_btn_callback(self):
+        """ Callback to the import button. It imports the expences in gspread. """
+        if self.csv_file_var.get() != '':
+            if self.csv_filename.endswith('csv'):
+                import_expences(self.csv_filename, self.settings)
+            else:
+                messagebox.showerror(title="Error", message="The file is not a CSV format.")
+        else:
+            messagebox.showerror(title="Error", message="No expences file selected.")
+
+    def select_payslip_btn_callback(self):
+        """ Callback to set the source PDF file of the payslip. """
+        filename = filedialog.askopenfilename(title="Select payslip file in PDF format...")
+        if os.path.isfile(filename):
+            self.payslip_filename = filename
+            self.payslip_filename_var.set(filename)
+        else:
+            messagebox.showerror("Error", "No input file selected.")
+
+    def import_payslip_btn_callback(self):
+        """ Callback to the import button. It imports the payslisps in gspread. """
+        if self.payslip_filename_var.get() != '':
+            if self.payslip_filename.endswith('pdf'):
+                import_payslips(self.payslip_filename, self.settings)
+                messagebox.showinfo("Success", "Import completed.")
+            else:
+                messagebox.showerror("Error", "The file is not a PDF format.")
+        else:
+            messagebox.showerror("Error", "No expences file selected.")
     
-    # use the encoder to revert the encoded transformation, i.e. from uninay representation to labelized.
-    df['category'] = encoder.inverse_transform(y_pred)
-    return df
+    def retrain_btn_callback(self):
+        """ Callback to the button for retrain the classifier. """
+        if re_train_classifier():
+            messagebox.showinfo("Success", "Expences classifier re-trained.")
+        else:
+            messagebox.showerror("Error", "Expences classifier failed the re-train.")
 
 
 # **************************
 #            MAIN           
 # **************************
-# read the settings file
-settings = read_json('settings.json')
-
 if __name__ == '__main__':
-    # input cvs file
-    in_cvs_path = "infiles/n26-csv-transactions.csv"
-    df_in = ingest_N26_csv(in_cvs_path, settings)
-
-    # in_cvs_path = "infiles/Umsatzanzeige_ING2.csv"
-    # df_in = ingest_ING_csv(in_cvs_path)
-
-    print("Input dataframe len={}".format(len(df_in)))
-
-    # classify the input transactions in categories
-    df_class = classify(df_in)
-
-    # get the unique values of the year from the input csv. In this way, I download only the ones that are needed
-    unique_years_in = set(x[:4] for x in df_class["date"].tolist()) # set of strings
-
-    # open the google sheet
-    sh = google_services()
-
-    # create a dict that contains the worksheets. 
-    # key: wsh title, value: pointer to the wsh
-    worksheets = dict()
-    for x in sh.worksheets():
-        worksheets[x.title] = x
-
-    # loop each year
-    for year in sorted(unique_years_in):
-        print('year={}'.format(year))
-        wsh = None
-        if year in worksheets.keys():
-            # there is a worksheet having the same year.
-            # donwload from gspread all the records in the 'year' sheet in a pandas frame
-            wsh = worksheets[year]
-            df_gd = pd.DataFrame(wsh.get_all_records())
-
-            # merge the downloaded pandas frame with the input csv pandas of the records of the same year. 
-            df_out = pd.merge(df_gd, df_class[df_class['date'].str.contains(year)], on=list(df_class.columns), how="outer")
-        else:
-            # there are no worksheets having 'year' name, create a new one and fill the values from the input csv
-            wsh = sh.add_worksheet(title=year, rows=1000, cols=100)
-            df_out = df_class[df_class['date'].str.contains(year)]
-            worksheets[year] = wsh
-        
-        # finally update the output df in the target year sheet
-        wsh.update([df_out.columns.values.tolist()] + df_out.values.tolist())
-
-    
+    # Init for the GUI pop-ups
+    root = tk.Tk()
+    app = App(root)
+    root.mainloop()
