@@ -18,6 +18,7 @@ def _preprocess(s):
     s = s.lower() # to lowercase
     return s
 
+
 def _get_month_int(d):
     """ Takes in input a string containing a date and returns the month in integer.
     Parameter:
@@ -27,6 +28,7 @@ def _get_month_int(d):
     """
     dt = datetime.strptime(d, '%Y-%m-%d')
     return dt.month
+
 
 def check_header(csv_lines, settings):
     """ Check if the header line is the expected one and understand also which bank it belongs.
@@ -131,4 +133,3 @@ def ingest_ING_csv(csv_path, settings):
     generic_df['payee'].fillna('', inplace=True)
     generic_df['reference'].fillna('', inplace=True)
     return generic_df
-

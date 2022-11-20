@@ -3,7 +3,7 @@ import sys
 import json
 
 # libraries
-from gdrive_lib import import_expences, import_payslips
+from gdrive_lib import import_expences, import_payslips, re_train_classifier
 
 
 # tkinter
