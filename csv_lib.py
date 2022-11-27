@@ -5,6 +5,11 @@ from datetime import datetime
 
 """ Library for the managing of the input files in CSV format. """
 
+class UnkownBankError(Exception):
+    """ Error raised when a CSV from a unkown bank is injested. """
+    pass
+
+
 def _preprocess(s):
     """ Preprocess the input string. Remove the unwanted chars.
     Parameter:
@@ -18,6 +23,15 @@ def _preprocess(s):
     s = s.lower() # to lowercase
     return s
 
+def _preprocess_date(date_str):
+    """ Convert the date string from %d.%m.%y to %y-%m-%d.
+    Parameter:
+        date_str: String. Date in %d.%m.%y format.
+    Returns:
+        String. Date in %y-%m-%d format.
+    """
+    d = datetime.strptime(date_str, '%d.%m.%Y')
+    return d.strftime('%Y-%m-%d')
 
 def _get_month_int(d):
     """ Takes in input a string containing a date and returns the month in integer.
@@ -30,30 +44,28 @@ def _get_month_int(d):
     return dt.month
 
 
-def check_header(csv_lines, settings):
+def check_which_bank(csv_path, settings):
     """ Check if the header line is the expected one and understand also which bank it belongs.
     Parameters:
-        cvs_lines: Lists of lists of strings. Input file.
+        csv_path: String. path of the input file.
     Returns:
-        check_header_ok: boolean. True if the header is as expected. False if not or the bank is not recognized.
         bank_type: String. N26, ING or None if not recognized
+    Raises:
+        UnkownBankError: the CSV is unrecognized.
     """
+    # read the lines
+    with open(csv_path) as csv_file:
+        csv_lines = list(csv.reader(csv_file, delimiter=',', quotechar='"'))
+    
     # Check if the header is compliant with N26.
-    N26_HEADER_LINE = settings["N26_HEADER_LINE"]
+    N26_HEADER_LINE = settings['N26_HEADER_LINE']
+    ING_HEADER_LINE = settings['ING_HEADER_LINE']
     if csv_lines[0] == list(N26_HEADER_LINE.keys()):
-        # print("N26")
-        return True, "N26"
+        return 'N26'
+    elif csv_lines[13][0].startswith('Buchung'): # Check if the header is compliant with ING.
+        return 'ING'
     else:
-        i = 1
-        while i < 15:
-            ING_HEADER_LINE = settings["ING_HEADER_LINE"]
-            if csv_lines[i] == list(ING_HEADER_LINE.keys()):
-                # print("ING")
-                return True, "ING"
-            else:
-                i = i + 1
-        print("Not recognized")
-        return False, None
+        raise UnkownBankError('Header not respecting neither N26 nor the ING header')
 
 
 def ingest_N26_csv(csv_path, settings):
@@ -68,17 +80,14 @@ def ingest_N26_csv(csv_path, settings):
     # read the lines
     with open(csv_path) as csv_file:
         csv_lines = list(csv.reader(csv_file, delimiter=',', quotechar='"'))
-    
-    # Check if the header is compliant with N26.
-    N26_HEADER_LINE = settings["N26_HEADER_LINE"]
-    if csv_lines[0] != list(N26_HEADER_LINE.keys()):
-        raise ValueError("Header not respecting the N26 header")
-    else:
-        csv_lines = csv_lines[1:] # remove the first line that contains the header
+        
+    # remove the first line that contains the header
+    csv_lines = csv_lines[1:]
 
     generic_lines = []
     # construct the generic lines as per GENERIC_HEADER
     # "Date", "Payee", "Reference", "Amount"
+    N26_HEADER_LINE = settings["N26_HEADER_LINE"]
     for line in csv_lines:
         generic_lines.append([line[N26_HEADER_LINE["Date"]], # Date
                               _preprocess(line[N26_HEADER_LINE["Payee"]]), # Payee
@@ -108,19 +117,15 @@ def ingest_ING_csv(csv_path, settings):
     with open(csv_path) as csv_file:
         csv_lines = list(csv.reader(csv_file, delimiter=';'))
 
-    # Check if the header is compliant with ING.
-    ING_HEADER_LINE = settings['ING_HEADER_LINE']
-    if csv_lines[13][0] != 'Buchung':
-        raise ValueError('Header not respecting the ING header')
-    else:
-        csv_lines = csv_lines[14:] # remove the first line that contains the header
+    csv_lines = csv_lines[14:] # remove the first line that contains the header
 
     generic_lines = []
     # construct the generic lines as per GENERIC_HEADER
     # "Date", "Payee", "Reference", "Category", "Amount"
     # 25.10.2022 ;  25.10.2022;    TELESPAZIO GERMANY GMBH;   Gehalt/Rente;  GEHALT 10/22;  4.922,75;EUR;3.185,53;EUR
+    ING_HEADER_LINE = settings["ING_HEADER_LINE"]
     for line in csv_lines:
-        generic_lines.append([line[ING_HEADER_LINE['Valuta']].replace('.', '-'), # Date
+        generic_lines.append([_preprocess_date(line[ING_HEADER_LINE['Valuta']]), # Date
                               _preprocess(line[ING_HEADER_LINE['Auftraggeber/Empfanger']]), # Payee
                               _preprocess(line[ING_HEADER_LINE['Verwendungszweck']]), # Reference
                               line[ING_HEADER_LINE['Betrag']], # Amount
@@ -129,6 +134,8 @@ def ingest_ING_csv(csv_path, settings):
     # finally create the pandas dataframe
     c = list(settings['GENERIC_HEADER'].keys())
     generic_df = pd.DataFrame(data=generic_lines, columns=c)
+    generic_df['amount'] = generic_df['amount'].str.replace('.', '').replace(',', '.')
+    generic_df['amount'] = generic_df['amount'].str.replace(',', '.')
     generic_df = generic_df.astype(settings["GENERIC_HEADER_DTYPE"])
     generic_df['payee'].fillna('', inplace=True)
     generic_df['reference'].fillna('', inplace=True)
