@@ -1,3 +1,5 @@
+import os
+import sys
 import gspread
 import joblib
 import pandas as pd
@@ -10,7 +12,8 @@ from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
 # personal libraries
-from csv_lib import ingest_N26_csv, ingest_ING_csv, _preprocess, _get_month_int
+from csv_lib import ingest_N26_csv, ingest_ING_csv, _preprocess, _get_month_int, check_which_bank
+
 
 def google_services(settings):
     """ Connect with the google services. """
@@ -30,12 +33,26 @@ def classify(df, settings):
     Returns:
         df: pd.DataFrame. Output dataframe with the category feature populated.
     """
-    # load the required models
-    with open(settings['MODEL_CLASSIFIER_PATH'], 'rb') as classifierfile:
+    # load the required models: if not locally located, use the absolute path.
+    # CLASSIFIER
+    classifier_path = settings['MODEL_CLASSIFIER_PATH']
+    if not os.path.isfile(classifier_path):
+        classifier_path = os.path.join(os.path.dirname(sys.argv[0]), classifier_path)
+    with open(classifier_path, 'rb') as classifierfile:
         classifier = joblib.load(classifierfile)
-    with open(settings['MODEL_ENCODER_PATH'], 'rb') as encoderfile:
+
+    # ENCODER
+    encoder_path = settings['MODEL_ENCODER_PATH']
+    if not os.path.isfile(encoder_path):
+        encoder_path = os.path.join(os.path.dirname(sys.argv[0]), encoder_path)
+    with open(encoder_path, 'rb') as encoderfile:
         encoder = joblib.load(encoderfile)
-    with open(settings['MODEL_VOCABOULARY_PATH'], 'rb') as vacfile:
+
+    # VOCABOULARY
+    vocaboulary_path = settings['MODEL_VOCABOULARY_PATH']
+    if not os.path.isfile(vocaboulary_path):
+        vocaboulary_path = os.path.join(os.path.dirname(sys.argv[0]), vocaboulary_path)
+    with open(vocaboulary_path, 'rb') as vacfile:
         vocaboulary = joblib.load(vacfile)
 
     # preprocessing
@@ -160,15 +177,25 @@ def import_expences(in_cvs_path, settings):
         in_csv_path: String. Path of the input csv file.
         settings: Dictionary.
     """
-    df_in = ingest_N26_csv(in_cvs_path, settings)
-
-    #print("Input dataframe len={}".format(len(df_in)))
+    bank = check_which_bank(in_cvs_path, settings)
+    if bank == 'N26':
+        df_in = ingest_N26_csv(in_cvs_path, settings)
+        print('Ingested N26 CSV')
+    elif bank == 'ING':
+        df_in = ingest_ING_csv(in_cvs_path, settings)
+        print('Ingested ING CSV')
+    
+    if df_in.empty:
+        print('Input csv is empty')
+        return
 
     # classify the input transactions in categories
+    print('classifying')
     df_class = classify(df_in, settings)
 
     # add the extra fields required for the visualization in gspread
-    df_class['month'] = df_class['month'].apply(_get_month_int) # add a column with the month in integer format
+    df_class['bank'] = bank # add the element
+    df_class['month'] = df_class['date'].apply(_get_month_int) # add a column with the month in integer format
 
     # get the unique values of the year from the input csv. In this way, I download only the ones that are needed
     unique_years_in = set(x[:4] for x in df_class['date'].tolist()) # set of strings
