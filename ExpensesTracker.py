@@ -3,18 +3,18 @@ import sys
 import json
 
 # libraries
-from gdrive_lib import import_expences, import_payslips, re_train_classifier
-
+from controller import import_expences, import_payslips, re_train_classifier
+from csv_lib import UnkownBankError
 
 # tkinter
 import tkinter as tk
 import tkinter.ttk as ttk
 from tkinter import font
-from tkinter import filedialog, simpledialog, messagebox
+from tkinter import filedialog, messagebox
 
 """ ExpensesTracker """
 
-def read_json(json_path):   
+def read_json(json_path):
     """ Read a json file.
     Parameters:
         json_path: String. Path of the json file.
@@ -142,7 +142,6 @@ class App:
         exit_btn = ttk.Button(self.root, text="Exit", command=sys.exit, style='Accentbutton')
         exit_btn.place(x=(self.width/2)-40, y=self.height-cmp_height-self.margin, width=80, height=cmp_height)
 
-        
     def select_csv_btn_callback(self):
         """ Callback to set the source CSV file of the expences. """
         filename = filedialog.askopenfilename(title="Select expences file in CSV format...")
@@ -156,7 +155,11 @@ class App:
         """ Callback to the import button. It imports the expences in gspread. """
         if self.csv_file_var.get() != '':
             if self.csv_filename.endswith('csv'):
-                import_expences(self.csv_filename, self.settings)
+                try:
+                    import_expences(self.csv_filename, self.settings)
+                    messagebox.showinfo(title="Info", message="Import completed.")
+                except UnkownBankError:
+                    messagebox.showerror(title="Error", message="The CSV format is unexpected or is coming from an unsupported bank.")
             else:
                 messagebox.showerror(title="Error", message="The file is not a CSV format.")
         else:
