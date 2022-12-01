@@ -4,15 +4,29 @@ import gspread
 import joblib
 import pandas as pd
 import re
+import json
 
 # scikit-learn
 from sklearn.preprocessing import LabelBinarizer
 from sklearn.model_selection import train_test_split
-from sklearn.feature_extraction.text import TfidfVectorizer, CountVectorizer
-from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics import classification_report, accuracy_score
+from sklearn.ensemble import RandomForestClassifier
 
 # personal libraries
 from csv_lib import ingest_N26_csv, ingest_ING_csv, _preprocess, _get_month_int, check_which_bank
+
+
+def read_json(json_path):
+    """ Read a json file.
+    Parameters:
+        json_path: String. Path of the json file.
+    Returns:
+        d: dict. Content of the file.
+    """
+    with open(json_path, 'r') as f:
+        d = json.load(f)
+    return d
 
 
 def google_services(settings):
@@ -83,10 +97,11 @@ def train(transactions, settings):
     """ Perform the train of the classifier.
     Parameters:
         transactions: pd.DataFrame. Input transactions with the classified
+        settings: dict.
     """
     # preprocessing
     for feature in list(transactions.columns):
-        if feature not in ['payee', 'reference', 'category']:
+        if feature not in ['payee', 'reference', 'category', 'amount']:
             # drop the useless features
             transactions = transactions.drop(feature, axis=1)
     
@@ -128,7 +143,7 @@ def train(transactions, settings):
     X_train, X_test, y_train, y_test = train_test_split(tr_x, tr_cat_prepared, test_size=0.2)
 
     # train a random forest classifier
-    from sklearn.ensemble import RandomForestClassifier
+    print('Classifying')
     classifier = RandomForestClassifier(n_estimators=2500)
     classifier.fit(X_train, y_train)
 
@@ -136,20 +151,23 @@ def train(transactions, settings):
     y_pred = classifier.predict(X_test)
 
     # evaluate the model
-    # print(confusion_matrix(y_test,y_pred))
+    # print('Results:')
     print(classification_report(y_test,y_pred, target_names=encoder.classes_))
-    print(accuracy_score(y_test, y_pred))
+    print('Accuracy score: {}'.format(accuracy_score(y_test, y_pred)))
 
     # save the model of the random forest:
     with open(settings['MODEL_CLASSIFIER_PATH'], 'wb') as picklefile:
+        print('Saved classifier model in {}'.format(settings['MODEL_CLASSIFIER_PATH']))
         joblib.dump(classifier, picklefile)
 
     # save the vocaboulary
     with open(settings['MODEL_VOCABOULARY_PATH'], 'wb') as picklefile:
+        print('Saved vocaboulary model in {}'.format(settings['MODEL_VOCABOULARY_PATH']))
         joblib.dump(vocabulary, picklefile)
 
     # save the vocaboulary
     with open(settings['MODEL_ENCODER_PATH'], 'wb') as picklefile:
+        print('Saved encoder model in {}'.format(settings['MODEL_ENCODER_PATH']))
         joblib.dump(encoder, picklefile)
 
 
@@ -163,7 +181,7 @@ def get_all_worksheets(sh, only_years=False):
     worksheets = dict()
     if only_years: # if only the years are in
         for x in sh.worksheets():
-            if re.search('^(20[0-9]{2})$', x) != None:
+            if re.search('^(20[0-9]{2})$', x.title) != None:
                 worksheets[x.title] = x
     else:
         for x in sh.worksheets():
@@ -230,6 +248,13 @@ def import_expences(in_cvs_path, settings):
 
 
 def re_train_classifier(settings):
+    """ Re-train the classifier based on the transactions present in the gspread online.
+    Parameters:
+        settings: Dict.
+    Returns:
+        True: if the classification was successfull
+        False: otherwise.
+    """
     # open the google sheet
     sh = google_services(settings)
 
@@ -239,7 +264,9 @@ def re_train_classifier(settings):
     print('re_train_classifier')
 
     df = pd.DataFrame()
+    print("fetching...")
     for year in sorted(years_worksheets.keys()):
+        print(year)
         # donwload from gspread all the records in the 'year' sheet in a pandas frame
         wsh = years_worksheets[year]
         if df.empty:
