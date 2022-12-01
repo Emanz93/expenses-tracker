@@ -3,7 +3,7 @@ import sys
 import json
 
 # libraries
-from controller import import_expences, import_payslips, re_train_classifier
+from controller import read_json, import_expences, import_payslips, re_train_classifier
 from csv_lib import UnkownBankError
 
 # tkinter
@@ -13,18 +13,6 @@ from tkinter import font
 from tkinter import filedialog, messagebox
 
 """ ExpensesTracker """
-
-def read_json(json_path):
-    """ Read a json file.
-    Parameters:
-        json_path: String. Path of the json file.
-    Returns:
-        d: dict. Content of the file.
-    """
-    with open(json_path, 'r') as f:
-        d = json.load(f)
-    return d
-
 
 class App:
     """ Class that represent the GUI. """
@@ -187,10 +175,12 @@ class App:
     
     def retrain_btn_callback(self):
         """ Callback to the button for retrain the classifier. """
-        if re_train_classifier():
+        try:
+            re_train_classifier(self.settings)
             messagebox.showinfo("Success", "Expences classifier re-trained.")
-        else:
-            messagebox.showerror("Error", "Expences classifier failed the re-train.")
+        except Exception as e:
+            messagebox.showerror("Error", "Expences classifier failed the re-train. {}".format(e))
+            raise e
 
 
 # **************************
