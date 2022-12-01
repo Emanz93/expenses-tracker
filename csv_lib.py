@@ -74,8 +74,6 @@ def ingest_N26_csv(csv_path, settings):
         csv_path: string. Path of the CSV file to ingest.
     Returns:
         generic_df: pd.DataFrame.
-    Raises:
-        ValueError: In case the header of the input CSV is not respecting the one for N26 ecoded in the settings. 
     """
     # read the lines
     with open(csv_path) as csv_file:
@@ -109,9 +107,7 @@ def ingest_ING_csv(csv_path, settings):
     Parameters:
         csv_path: string. Path of the CSV file to ingest.
     Returns:
-        generic_lines: List of list of strings respecting the generic header.
-    Raises:
-        ValueError: In case the header of the input CSV is not respecting the one for ING ecoded in the settings. 
+        generic_lines: List of list of strings respecting the generic header. 
     """
     # read the lines
     with open(csv_path) as csv_file:
@@ -134,8 +130,8 @@ def ingest_ING_csv(csv_path, settings):
     # finally create the pandas dataframe
     c = list(settings['GENERIC_HEADER'].keys())
     generic_df = pd.DataFrame(data=generic_lines, columns=c)
-    generic_df['amount'] = generic_df['amount'].str.replace('.', '').replace(',', '.')
-    generic_df['amount'] = generic_df['amount'].str.replace(',', '.')
+    generic_df['amount'] = generic_df['amount'].str.replace('.', '', regex=False)
+    generic_df['amount'] = generic_df['amount'].str.replace(',', '.', regex=False)
     generic_df = generic_df.astype(settings["GENERIC_HEADER_DTYPE"])
     generic_df['payee'].fillna('', inplace=True)
     generic_df['reference'].fillna('', inplace=True)
