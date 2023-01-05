@@ -14,6 +14,11 @@ from tkinter import filedialog, messagebox
 
 """ ExpensesTracker """
 
+# TODO: add waiting window for both import and training
+# TODO: double check the duplicates in the import phase
+# TODO: do a better sampling of the data for the training 
+
+
 class App:
     """ Class that represent the GUI. """
     
