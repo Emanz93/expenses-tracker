@@ -1,6 +1,7 @@
 import os
 import sys
 import json
+import threading
 
 # libraries
 from controller import read_json, import_expences, import_payslips, re_train_classifier
@@ -135,6 +136,28 @@ class App:
         exit_btn = ttk.Button(self.root, text="Exit", command=sys.exit, style='Accentbutton')
         exit_btn.place(x=(self.width/2)-40, y=self.height-cmp_height-self.margin, width=80, height=cmp_height)
 
+    def create_waiting_window(self):
+        """ Create a toplevel window to display the waiting message """
+        print('create_waiting_window')
+        height=50
+        width=150
+        self.waiting_window = tk.Toplevel(self.root)
+
+        # create a frame container for the label
+        fr = ttk.Frame(self.waiting_window, height=height, width=width)
+        fr.pack()
+        win_label = ttk.Label(fr, text='Please wait...')
+        win_label.pack()
+
+        # setting window size
+        screenwidth = self.root.winfo_screenwidth()
+        screenheight = self.root.winfo_screenheight()
+        alignstr = '%dx%d+%d+%d' % (width, height, (screenwidth - width) / 2, (screenheight - height) / 2)
+        self.waiting_window.geometry(alignstr)
+
+        # icon
+        self.waiting_window.tk.call('wm', 'iconphoto', self.waiting_window._w, tk.PhotoImage(file=self.png_icon_path))
+
     def select_csv_btn_callback(self):
         """ Callback to set the source CSV file of the expences. """
         filename = filedialog.askopenfilename(title="Select expences file in CSV format...")
@@ -149,7 +172,21 @@ class App:
         if self.csv_file_var.get() != '':
             if self.csv_filename.endswith('csv'):
                 try:
-                    import_expences(self.csv_filename, self.settings)
+                    # start a thread to avoid the GUI to freeze
+                    t = threading.Thread(target=import_expences, args=(self.csv_filename, self.settings))
+                    t.start()
+                    # import_expences(self.csv_filename, self.settings)
+
+                    # start the waiting window in another thread.
+                    self.create_waiting_window()
+                    self.root.update()
+
+                    # wait for the thead to be completed
+                    t.join()
+                    
+                    # destroy the waiting window
+                    self.waiting_window.destroy()
+
                     messagebox.showinfo(title="Info", message="Import completed.")
                 except UnkownBankError:
                     messagebox.showerror(title="Error", message="The CSV format is unexpected or is coming from an unsupported bank.")
