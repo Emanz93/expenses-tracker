@@ -1,4 +1,7 @@
+privacy_key.json
 g_service_key.json
 infiles
+res/models/*
+*.ipynb
 test.py
 __pycache__
