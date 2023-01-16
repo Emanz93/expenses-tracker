@@ -7,7 +7,8 @@ from datetime import datetime
 
 class UnkownBankError(Exception):
     """ Error raised when a CSV from a unkown bank is injested. """
-    pass
+    def __init__(self, *args: object) -> None:
+        super().__init__(*args)
 
 
 def _preprocess(s):
