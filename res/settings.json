@@ -1,9 +1,9 @@
 {
     "G_SERVICE_KEYFILE": "res/g_service_key.json",
-    "G_SHEET_NAME": "Expenses",
-    "MODEL_ENCODER_PATH": "res/models/encoder",
-    "MODEL_CLASSIFIER_PATH": "res/models/text_classifier",
-    "MODEL_VOCABOULARY_PATH": "res/models/vocaboulary",
+    "G_SHEET_NAME": "Test_Sheet",
+    "MODEL_ENCODER_PATH": "res/models/encoder.aes",
+    "MODEL_CLASSIFIER_PATH": "res/models/text_classifier.aes",
+    "MODEL_VOCABOULARY_PATH": "res/models/vocaboulary.aes",
     "GENERIC_HEADER": {
         "date": 0,
         "payee": 1,
