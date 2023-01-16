@@ -1,5 +1,7 @@
 import os
 import sys
+import time
+from tkinter import messagebox
 import gspread
 import joblib
 import pandas as pd
@@ -15,7 +17,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 # personal libraries
 from csv_lib import ingest_N26_csv, ingest_ING_csv, _preprocess, _get_month_int, check_which_bank
-
+from crypto_lib import *
 
 def read_json(json_path):
     """ Read a json file.
@@ -38,36 +40,50 @@ def google_services(settings):
     return sh
 
 
-def classify(df, settings):
+def classify(df, settings, communicator):
     """ Perform the classification task. It uses the classified model saved in a pickle file along with the 
     hot encoder used for the target label unary transformation. It adds the 'category' column to the input 
     data frame and returns it.
     Parameter:
         df: pd.DataFrame. Input dataframe with the category feature empty.
+        settings: Dictionary.
+        communicator: ThreadCommunicator. Object used to communicate with the main thread.
     Returns:
         df: pd.DataFrame. Output dataframe with the category feature populated.
     """
-    # load the required models: if not locally located, use the absolute path.
-    # CLASSIFIER
-    classifier_path = settings['MODEL_CLASSIFIER_PATH']
-    if not os.path.isfile(classifier_path):
-        classifier_path = os.path.join(os.path.dirname(sys.argv[0]), classifier_path)
-    with open(classifier_path, 'rb') as classifierfile:
-        classifier = joblib.load(classifierfile)
+    communicator.message_queue.append('Loading models')
+    # load the key
+    key = read_json('res/privacy_key.json')
 
+    # load the required models: if not locally located, use the absolute path.
     # ENCODER
     encoder_path = settings['MODEL_ENCODER_PATH']
     if not os.path.isfile(encoder_path):
         encoder_path = os.path.join(os.path.dirname(sys.argv[0]), encoder_path)
-    with open(encoder_path, 'rb') as encoderfile:
-        encoder = joblib.load(encoderfile)
+    plain_encoder_path = decrypt_file(encoder_path, key['key'], key['salt']) # decrypt
+    with open(plain_encoder_path, 'rb') as encoderfile:
+        encoder = joblib.load(encoderfile) # unpickle
+    os.unlink(plain_encoder_path)
 
     # VOCABOULARY
     vocaboulary_path = settings['MODEL_VOCABOULARY_PATH']
     if not os.path.isfile(vocaboulary_path):
         vocaboulary_path = os.path.join(os.path.dirname(sys.argv[0]), vocaboulary_path)
-    with open(vocaboulary_path, 'rb') as vacfile:
-        vocaboulary = joblib.load(vacfile)
+    plain_vocaboulary_path = decrypt_file(vocaboulary_path, key['key'], key['salt']) # decrypt
+    with open(plain_vocaboulary_path, 'rb') as vacfile:
+        vocaboulary = joblib.load(vacfile) # unpickle
+    os.unlink(plain_vocaboulary_path)
+    
+    # CLASSIFIER
+    classifier_path = settings['MODEL_CLASSIFIER_PATH']
+    if not os.path.isfile(classifier_path):
+        classifier_path = os.path.join(os.path.dirname(sys.argv[0]), classifier_path)
+    plain_classifier_path = decrypt_file(classifier_path, key['key'], key['salt']) # decrypt
+    with open(plain_classifier_path, 'rb') as classifierfile:
+        classifier = joblib.load(classifierfile) # unpickle
+    os.unlink(plain_classifier_path)
+
+    communicator.message_queue.append('Classifying...')
 
     # preprocessing
     transactions = df.copy()
@@ -81,25 +97,27 @@ def classify(df, settings):
         X = vectorizer.fit_transform(transactions[feature])
         x_in = pd.DataFrame(X.toarray())
         x_in.columns = x_in.columns.astype(str)
-        print(feature)
         transactions = transactions.drop(feature, axis=1)
         transactions = pd.concat([transactions, x_in], axis=1)
-    
+
     # perform the prediction
     y_pred = classifier.predict(transactions)
     
     # use the encoder to revert the encoded transformation, i.e. from uninay representation to labelized.
     df['category'] = encoder.inverse_transform(y_pred)
+
     return df
 
 
-def train(transactions, settings):
-    """ Perform the train of the classifier.
+def train(transactions, settings, communicator):
+    """ Re-train of the classifier, save locally the models and ecrypt them.
     Parameters:
         transactions: pd.DataFrame. Input transactions with the classified
-        settings: dict.
+        settings: Dictionary.
+        communicator: ThreadCommunicator. Object used to communicate with the main thread.
     """
     # preprocessing
+    communicator.message_queue.append('Training...')
     for feature in list(transactions.columns):
         if feature not in ['payee', 'reference', 'category', 'amount']:
             # drop the useless features
@@ -133,7 +151,6 @@ def train(transactions, settings):
         vectorizer = TfidfVectorizer(max_features=1500, min_df=5, max_df=0.7)
         X = vectorizer.fit_transform(tr_x[feature]).toarray()
         vocabulary[feature] = vectorizer.vocabulary_
-        print(feature)
         x_in = pd.DataFrame(X)
         x_in.columns = x_in.columns.astype(str)
         tr_x = tr_x.drop(feature, axis=1)
@@ -143,7 +160,6 @@ def train(transactions, settings):
     X_train, X_test, y_train, y_test = train_test_split(tr_x, tr_cat_prepared, test_size=0.2)
 
     # train a random forest classifier
-    print('Classifying')
     classifier = RandomForestClassifier(n_estimators=2500)
     classifier.fit(X_train, y_train)
 
@@ -151,30 +167,40 @@ def train(transactions, settings):
     y_pred = classifier.predict(X_test)
 
     # evaluate the model
-    # print('Results:')
     print(classification_report(y_test,y_pred, target_names=encoder.classes_))
     print('Accuracy score: {}'.format(accuracy_score(y_test, y_pred)))
 
+    # load the key
+    key = read_json('res/privacy_key.json')
+    communicator.message_queue.append('Saving models')
+
     # save the model of the random forest:
-    with open(settings['MODEL_CLASSIFIER_PATH'], 'wb') as picklefile:
-        print('Saved classifier model in {}'.format(settings['MODEL_CLASSIFIER_PATH']))
+    with open(settings['MODEL_CLASSIFIER_PATH'][:-4], 'wb') as picklefile:
         joblib.dump(classifier, picklefile)
+    encrypt_file(settings['MODEL_CLASSIFIER_PATH'][:-4], key['key'], key['salt']) # ecrypt
+    os.unlink(settings['MODEL_CLASSIFIER_PATH'][:-4]) # remove the plain file
+    print('Saved classifier model in {}'.format(settings['MODEL_CLASSIFIER_PATH']))
 
     # save the vocaboulary
-    with open(settings['MODEL_VOCABOULARY_PATH'], 'wb') as picklefile:
-        print('Saved vocaboulary model in {}'.format(settings['MODEL_VOCABOULARY_PATH']))
+    with open(settings['MODEL_VOCABOULARY_PATH'][:-4], 'wb') as picklefile:
         joblib.dump(vocabulary, picklefile)
+    encrypt_file(settings['MODEL_VOCABOULARY_PATH'][:-4], key['key'], key['salt']) # ecrypt
+    os.unlink(settings['MODEL_VOCABOULARY_PATH'][:-4]) # remove the plain file
+    print('Saved vocaboulary model in {}'.format(settings['MODEL_VOCABOULARY_PATH']))
 
     # save the vocaboulary
-    with open(settings['MODEL_ENCODER_PATH'], 'wb') as picklefile:
-        print('Saved encoder model in {}'.format(settings['MODEL_ENCODER_PATH']))
+    with open(settings['MODEL_ENCODER_PATH'][:-4], 'wb') as picklefile:
         joblib.dump(encoder, picklefile)
+    encrypt_file(settings['MODEL_ENCODER_PATH'][:-4], key['key'], key['salt']) # ecrypt
+    os.unlink(settings['MODEL_ENCODER_PATH'][:-4]) # remove the plain file
+    print('Saved encoder model in {}'.format(settings['MODEL_ENCODER_PATH']))
 
 
 def get_all_worksheets(sh, only_years=False):
     """ Return a dictionary of worksheets from the gsheet.
     Parameter:
         sh: Gspread sheet.
+        only_years: boolean. (Optional). If True, returns only the sheets that have a year as name.
     Returns:
         worksheets: dictionary. <key: worksheet name (string). Value: pointer to the worksheet>
     """
@@ -189,12 +215,15 @@ def get_all_worksheets(sh, only_years=False):
     return worksheets
 
 
-def import_expences(in_cvs_path, settings):
+def import_expences(in_cvs_path, settings, communicator):
     """ Import the CSV in gspread.
     Parameters:
         in_csv_path: String. Path of the input csv file.
         settings: Dictionary.
+        communicator: ThreadCommunicator. Object used to communicate with the main thread.
     """
+    # check and ingest the CSV
+    communicator.message_queue.append('Ingesting CSV')
     bank = check_which_bank(in_cvs_path, settings)
     if bank == 'N26':
         df_in = ingest_N26_csv(in_cvs_path, settings)
@@ -202,14 +231,16 @@ def import_expences(in_cvs_path, settings):
     elif bank == 'ING':
         df_in = ingest_ING_csv(in_cvs_path, settings)
         print('Ingested ING CSV')
+    else:
+        raise ValueError('Unkown bank!')
     
     if df_in.empty:
         print('Input csv is empty')
+        messagebox.showwarning(title="Warning", message='Input csv is empty')
         return
 
     # classify the input transactions in categories
-    print('classifying')
-    df_class = classify(df_in, settings)
+    df_class = classify(df_in, settings, communicator)
 
     # add the extra fields required for the visualization in gspread
     df_class['bank'] = bank # add the element
@@ -227,7 +258,8 @@ def import_expences(in_cvs_path, settings):
 
     # loop each year
     for year in sorted(unique_years_in):
-        print('year={}'.format(year))
+        print('Uploading {}'.format(year))
+        communicator.message_queue.append('Uploading {}...'.format(year))
         wsh = None
         if year in worksheets.keys():
             # there is a worksheet having the same year.
@@ -245,26 +277,29 @@ def import_expences(in_cvs_path, settings):
         
         # finally update the output df in the target year sheet
         wsh.update([df_out.columns.values.tolist()] + df_out.values.tolist())
+    
+    communicator.message_queue.append('Done!')
+    time.sleep(0.25) # give the time to the GUI to react
+    communicator.is_done = True # signal that the ingestion thread is done.
 
 
-def re_train_classifier(settings):
+def re_train_classifier(settings, communicator):
     """ Re-train the classifier based on the transactions present in the gspread online.
     Parameters:
-        settings: Dict.
-    Returns:
-        True: if the classification was successfull
-        False: otherwise.
+        settings: Dictionary.
+        communicator: ThreadCommunicator. Object used to communicate with the main thread.
     """
+    communicator.message_queue.append('Re-training...')
     # open the google sheet
     sh = google_services(settings)
 
     # create a dict that contains the worksheets that are currently in gspread. 
     # key: wsh title, value: pointer to the wsh
     years_worksheets = get_all_worksheets(sh, only_years=True)
-    print('re_train_classifier')
 
     df = pd.DataFrame()
     print("fetching...")
+    communicator.message_queue.append('fetching years...')
     for year in sorted(years_worksheets.keys()):
         print(year)
         # donwload from gspread all the records in the 'year' sheet in a pandas frame
@@ -274,7 +309,15 @@ def re_train_classifier(settings):
         else:
             df = pd.merge(df, pd.DataFrame(wsh.get_all_records()), on=list(df.columns), how="outer")
     
-    train(df, settings)
+    train(df, settings, communicator)
+    communicator.message_queue.append('Done')
+    time.sleep(0.25)
+    communicator.is_done = True # let the main thread know that we have finished here
 
-def import_payslips(in_cvs_path, settings):
+def import_payslips(in_cvs_path, settings, communicator):
+    """ Import the payslisps.
+    Parameters:
+        settings: Dictionary.
+        communicator: ThreadCommunicator. Object used to communicate with the main thread.
+    """
     print('import_payslips')

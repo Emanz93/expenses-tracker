@@ -1,7 +1,8 @@
 import os
 import sys
-import json
 import threading
+from collections import deque
+import time
 
 # libraries
 from controller import read_json, import_expences, import_payslips, re_train_classifier
@@ -15,10 +16,15 @@ from tkinter import filedialog, messagebox
 
 """ ExpensesTracker """
 
-# TODO: add waiting window for both import and training
+# TODO: add waiting window for re-training
 # TODO: double check the duplicates in the import phase
-# TODO: do a better sampling of the data for the training 
+# TODO: do a better sampling of the data for the training
 
+class ThreadCommunicator:
+    ''' Communication is the key! This class to help Threads to communicate better. '''
+    def __init__(self):
+        self.is_done = False
+        self.message_queue = deque()
 
 class App:
     """ Class that represent the GUI. """
@@ -39,6 +45,9 @@ class App:
 
         # populate the GUI
         self._create_main_frame()
+
+        # helper class
+        self.communicator = ThreadCommunicator()
 
     def _set_screen_settings(self, title="Title", width=500, height=500):
         """ Set the screen settings and the window placement.
@@ -137,7 +146,7 @@ class App:
         exit_btn.place(x=(self.width/2)-40, y=self.height-cmp_height-self.margin, width=80, height=cmp_height)
 
     def create_waiting_window(self):
-        """ Create a toplevel window to display the waiting message """
+        """ Create a toplevel window to display the waiting messages. """
         print('create_waiting_window')
         height=50
         width=150
@@ -146,8 +155,8 @@ class App:
         # create a frame container for the label
         fr = ttk.Frame(self.waiting_window, height=height, width=width)
         fr.pack()
-        win_label = ttk.Label(fr, text='Please wait...')
-        win_label.pack()
+        self.wait_label = ttk.Label(fr, text='Please wait...')
+        self.wait_label.pack()
 
         # setting window size
         screenwidth = self.root.winfo_screenwidth()
@@ -172,18 +181,26 @@ class App:
         if self.csv_file_var.get() != '':
             if self.csv_filename.endswith('csv'):
                 try:
-                    # start a thread to avoid the GUI to freeze
-                    t = threading.Thread(target=import_expences, args=(self.csv_filename, self.settings))
-                    t.start()
-                    # import_expences(self.csv_filename, self.settings)
-
                     # start the waiting window in another thread.
                     self.create_waiting_window()
                     self.root.update()
 
+                    # start a thread to avoid the GUI to freeze
+                    t = threading.Thread(target=import_expences, name='Controller-TH', args=(self.csv_filename, self.settings, self.communicator))
+                    t.start()
+
                     # wait for the thead to be completed
+                    while not self.communicator.is_done:
+                        try:
+                            text = self.communicator.message_queue.popleft()
+                        except IndexError:
+                            time.sleep(0.1) # Ignore, if no text available.
+                        else:
+                            
+                            self.wait_label['text'] = text
+                            self.root.update()
+
                     t.join()
-                    
                     # destroy the waiting window
                     self.waiting_window.destroy()
 
@@ -217,8 +234,31 @@ class App:
     
     def retrain_btn_callback(self):
         """ Callback to the button for retrain the classifier. """
+        self.communicator = ThreadCommunicator()
         try:
-            re_train_classifier(self.settings)
+            # start the waiting window in another thread.
+            self.create_waiting_window()
+            self.root.update()
+
+            # start a thread to avoid the GUI to freeze
+            t = threading.Thread(target=re_train_classifier, name='Controller-TH', args=(self.settings, self.communicator))
+            t.start()
+
+            # wait for the thead to be completed
+            while not self.communicator.is_done:
+                try:
+                    text = self.communicator.message_queue.popleft()
+                except IndexError:
+                    time.sleep(0.1) # Ignore, if no text available.
+                else:
+                    
+                    self.wait_label['text'] = text
+                    self.root.update()
+
+            t.join()
+            
+            # destroy the waiting window
+            self.waiting_window.destroy()
             messagebox.showinfo("Success", "Expences classifier re-trained.")
         except Exception as e:
             messagebox.showerror("Error", "Expences classifier failed the re-train. {}".format(e))
