@@ -3,6 +3,7 @@ from cryptography.fernet import Fernet, InvalidToken
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 
+
 class WrongPasswordException(ValueError):
     """ Exception raised when the wrong password has been provided. """
     def __init__(self, *args: object):
@@ -63,7 +64,7 @@ def decrypt_message(encripted_message, password, salt=None):
         password: String.
         salt: String. Optional. 
     Returns:
-        decripted_data: String. Encrypted message.
+        decripted_data: Byte. Decrypted message.
     Raises:
         WrongPasswordException: when the message cannot be decrypted due to wrong password.
     """
@@ -82,7 +83,7 @@ def decrypt_message(encripted_message, password, salt=None):
         decripted_data = keymaster.decrypt(encripted_message)
     except InvalidToken:
         raise WrongPasswordException('Wrong password or wrong salt')
-    return decripted_data.decode()
+    return decripted_data
 
 
 def decrypt_file(filename, password, salt):
@@ -100,7 +101,7 @@ def decrypt_file(filename, password, salt):
     decrypted_data = decrypt_message(encrypted_data, password, salt)
     
     decrypted_filename = filename.replace('.aes', '')
-    with open(decrypted_filename, "w") as f:
+    with open(decrypted_filename, "wb") as f:
         f.write(decrypted_data)
 
     return decrypted_filename
