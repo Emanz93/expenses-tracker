@@ -17,8 +17,8 @@ from tkinter import filedialog, messagebox
 """ ExpensesTracker """
 
 # TODO: add waiting window for re-training
-# TODO: double check the duplicates in the import phase
-# TODO: do a better sampling of the data for the training
+# TODO: double check the duplicates in the import phase -> hex(hash(...))
+# TODO: do a better sampling of the data for the training -> rebalance the training set
 
 class ThreadCommunicator:
     ''' Communication is the key! This class to help Threads to communicate better. '''
