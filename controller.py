@@ -19,6 +19,7 @@ from sklearn.ensemble import RandomForestClassifier
 from csv_lib import ingest_N26_csv, ingest_ING_csv, _preprocess, _get_month_int, check_which_bank
 from crypto_lib import *
 
+
 def read_json(json_path):
     """ Read a json file.
     Parameters:
@@ -87,7 +88,7 @@ def classify(df, settings, communicator):
 
     # preprocessing
     transactions = df.copy()
-    transactions = transactions.drop(['date'], axis=1)
+    transactions = transactions.drop(['date', 'id'], axis=1)
     transactions['payee'] = transactions['payee'].apply(_preprocess)
     transactions['reference'] = transactions['reference'].apply(_preprocess)
 
@@ -118,7 +119,7 @@ def train(transactions, settings, communicator):
     """
     # preprocessing
     communicator.message_queue.append('Training...')
-    for feature in list(transactions.columns):
+    for feature in list(transactions.columns): # delete the features that are not needed
         if feature not in ['payee', 'reference', 'category', 'amount']:
             # drop the useless features
             transactions = transactions.drop(feature, axis=1)
@@ -245,6 +246,9 @@ def import_expences(in_cvs_path, settings, communicator):
     # add the extra fields required for the visualization in gspread
     df_class['bank'] = bank # add the element
     df_class['month'] = df_class['date'].apply(_get_month_int) # add a column with the month in integer format
+    
+    # reorder the pandas frame columns
+    df_class = df_class[ df_class.columns[ [1,2,3,4,5,6,7,0] ] ]
 
     # get the unique values of the year from the input csv. In this way, I download only the ones that are needed
     unique_years_in = set(x[:4] for x in df_class['date'].tolist()) # set of strings
@@ -274,6 +278,9 @@ def import_expences(in_cvs_path, settings, communicator):
             wsh = sh.add_worksheet(title=year, rows=1000, cols=100)
             df_out = df_class[df_class['date'].str.contains(year)]
             worksheets[year] = wsh
+        
+        # delete the duplicates
+        df_out = df_out.drop_duplicates()
         
         # finally update the output df in the target year sheet
         wsh.update([df_out.columns.values.tolist()] + df_out.values.tolist())

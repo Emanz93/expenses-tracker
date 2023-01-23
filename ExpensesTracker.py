@@ -16,7 +16,6 @@ from tkinter import filedialog, messagebox
 
 """ ExpensesTracker """
 
-# TODO: add waiting window for re-training
 # TODO: double check the duplicates in the import phase -> hex(hash(...))
 # TODO: do a better sampling of the data for the training -> rebalance the training set
 
@@ -196,7 +195,7 @@ class App:
                         except IndexError:
                             time.sleep(0.1) # Ignore, if no text available.
                         else:
-                            
+                            # update the text with what the communicator sent
                             self.wait_label['text'] = text
                             self.root.update()
 

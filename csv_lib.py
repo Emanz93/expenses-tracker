@@ -24,6 +24,7 @@ def _preprocess(s):
     s = s.lower() # to lowercase
     return s
 
+
 def _preprocess_date(date_str):
     """ Convert the date string from %d.%m.%y to %y-%m-%d.
     Parameter:
@@ -33,6 +34,7 @@ def _preprocess_date(date_str):
     """
     d = datetime.strptime(date_str, '%d.%m.%Y')
     return d.strftime('%Y-%m-%d')
+
 
 def _get_month_int(d):
     """ Takes in input a string containing a date and returns the month in integer.
@@ -88,11 +90,11 @@ def ingest_N26_csv(csv_path, settings):
     # "Date", "Payee", "Reference", "Amount"
     N26_HEADER_LINE = settings["N26_HEADER_LINE"]
     for line in csv_lines:
-        generic_lines.append([line[N26_HEADER_LINE["Date"]], # Date
-                              _preprocess(line[N26_HEADER_LINE["Payee"]]), # Payee
-                              _preprocess(line[N26_HEADER_LINE["Payment reference"]]), # Reference
-                              line[N26_HEADER_LINE["Amount (EUR)"]], # Amount
-                            ])
+        date = line[N26_HEADER_LINE["Date"]]
+        payee = _preprocess(line[N26_HEADER_LINE["Payee"]])
+        reference = _preprocess(line[N26_HEADER_LINE["Payment reference"]])
+        amount = line[N26_HEADER_LINE["Amount (EUR)"]]
+        generic_lines.append([hex(hash(date + payee + reference + amount)),date,payee,reference,amount])
     
     # finally create the pandas dataframe
     c = list(settings["GENERIC_HEADER"].keys())
@@ -122,11 +124,11 @@ def ingest_ING_csv(csv_path, settings):
     # 25.10.2022 ;  25.10.2022;    TELESPAZIO GERMANY GMBH;   Gehalt/Rente;  GEHALT 10/22;  4.922,75;EUR;3.185,53;EUR
     ING_HEADER_LINE = settings["ING_HEADER_LINE"]
     for line in csv_lines:
-        generic_lines.append([_preprocess_date(line[ING_HEADER_LINE['Valuta']]), # Date
-                              _preprocess(line[ING_HEADER_LINE['Auftraggeber/Empfanger']]), # Payee
-                              _preprocess(line[ING_HEADER_LINE['Verwendungszweck']]), # Reference
-                              line[ING_HEADER_LINE['Betrag']], # Amount
-                            ])
+        date = _preprocess_date(line[ING_HEADER_LINE['Valuta']])
+        payee = _preprocess(line[ING_HEADER_LINE['Auftraggeber/Empfanger']])
+        reference = _preprocess(line[ING_HEADER_LINE['Verwendungszweck']])
+        amount = line[ING_HEADER_LINE['Betrag']]
+        generic_lines.append([hex(hash(date + payee + reference + amount)),date, payee, reference, amount])
     
     # finally create the pandas dataframe
     c = list(settings['GENERIC_HEADER'].keys())

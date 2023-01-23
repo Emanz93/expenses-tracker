@@ -1,16 +1,18 @@
 {
     "G_SERVICE_KEYFILE": "res/g_service_key.json",
-    "G_SHEET_NAME": "Test_Sheet",
+    "G_SHEET_NAME": "Expenses",
     "MODEL_ENCODER_PATH": "res/models/encoder.aes",
     "MODEL_CLASSIFIER_PATH": "res/models/text_classifier.aes",
     "MODEL_VOCABOULARY_PATH": "res/models/vocaboulary.aes",
     "GENERIC_HEADER": {
-        "date": 0,
-        "payee": 1,
-        "reference": 2,
-        "amount": 3
+        "id": 0,
+        "date": 1,
+        "payee": 2,
+        "reference": 3,
+        "amount": 4
     },
     "GENERIC_HEADER_DTYPE": {
+        "id": "str",
         "date": "str",
         "payee": "str",
         "reference": "str",
