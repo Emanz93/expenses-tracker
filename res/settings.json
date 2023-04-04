@@ -5,14 +5,12 @@
     "MODEL_CLASSIFIER_PATH": "res/models/text_classifier.aes",
     "MODEL_VOCABOULARY_PATH": "res/models/vocaboulary.aes",
     "GENERIC_HEADER": {
-        "id": 0,
-        "date": 1,
-        "payee": 2,
-        "reference": 3,
-        "amount": 4
+        "date": 0,
+        "payee": 1,
+        "reference": 2,
+        "amount": 3
     },
     "GENERIC_HEADER_DTYPE": {
-        "id": "str",
         "date": "str",
         "payee": "str",
         "reference": "str",

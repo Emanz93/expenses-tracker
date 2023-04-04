@@ -88,7 +88,7 @@ def classify(df, settings, communicator):
 
     # preprocessing
     transactions = df.copy()
-    transactions = transactions.drop(['date', 'id'], axis=1)
+    transactions = transactions.drop(['date'], axis=1)
     transactions['payee'] = transactions['payee'].apply(_preprocess)
     transactions['reference'] = transactions['reference'].apply(_preprocess)
 
@@ -248,7 +248,7 @@ def import_expences(in_cvs_path, settings, communicator):
     df_class['month'] = df_class['date'].apply(_get_month_int) # add a column with the month in integer format
     
     # reorder the pandas frame columns
-    df_class = df_class[ df_class.columns[ [1,2,3,4,5,6,7,0] ] ]
+    #df_class = df_class[ df_class.columns[ [1,2,3,4,5,6,7,0] ] ]
 
     # get the unique values of the year from the input csv. In this way, I download only the ones that are needed
     unique_years_in = set(x[:4] for x in df_class['date'].tolist()) # set of strings
@@ -281,6 +281,7 @@ def import_expences(in_cvs_path, settings, communicator):
         
         # delete the duplicates
         df_out = df_out.drop_duplicates()
+        #print('new entries={}'.format(len(df_out)))
         
         # finally update the output df in the target year sheet
         wsh.update([df_out.columns.values.tolist()] + df_out.values.tolist())

@@ -94,7 +94,7 @@ def ingest_N26_csv(csv_path, settings):
         payee = _preprocess(line[N26_HEADER_LINE["Payee"]])
         reference = _preprocess(line[N26_HEADER_LINE["Payment reference"]])
         amount = line[N26_HEADER_LINE["Amount (EUR)"]]
-        generic_lines.append([hex(hash(date + payee + reference + amount)),date,payee,reference,amount])
+        generic_lines.append([date,payee,reference,amount])
     
     # finally create the pandas dataframe
     c = list(settings["GENERIC_HEADER"].keys())
@@ -128,7 +128,7 @@ def ingest_ING_csv(csv_path, settings):
         payee = _preprocess(line[ING_HEADER_LINE['Auftraggeber/Empfanger']])
         reference = _preprocess(line[ING_HEADER_LINE['Verwendungszweck']])
         amount = line[ING_HEADER_LINE['Betrag']]
-        generic_lines.append([hex(hash(date + payee + reference + amount)),date, payee, reference, amount])
+        generic_lines.append([date, payee, reference, amount])
     
     # finally create the pandas dataframe
     c = list(settings['GENERIC_HEADER'].keys())
