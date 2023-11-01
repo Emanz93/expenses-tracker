@@ -61,8 +61,7 @@ class App:
         # set the icon
         self.png_icon_path = 'res/wallet.png'
         self.ico_icon_path = 'res/wallet.ico'
-        if not os.path.isfile(self.png_icon_path):
-            # if not locally called, use the absolute path.
+        if not os.path.isfile(self.png_icon_path): # if not locally called, use the absolute path.
             self.png_icon_path = os.path.join(os.path.dirname(sys.argv[0]), self.png_icon_path)
             self.ico_icon_path = os.path.join(os.path.dirname(sys.argv[0]), self.ico_icon_path)
         self.root.tk.call('wm', 'iconphoto', self.root._w, tk.PhotoImage(file=self.png_icon_path))
@@ -203,6 +202,9 @@ class App:
                     # destroy the waiting window
                     self.waiting_window.destroy()
 
+                    # clear the entry once the file has been processed.
+                    self.csv_file_var.set('')
+
                     messagebox.showinfo(title="Info", message="Import completed.")
                 except UnkownBankError:
                     messagebox.showerror(title="Error", message="The CSV format is unexpected or is coming from an unsupported bank.")
@@ -225,6 +227,10 @@ class App:
         if self.payslip_filename_var.get() != '':
             if self.payslip_filename.endswith('pdf'):
                 import_payslips(self.payslip_filename, self.settings)
+
+                # clear the entry once the file has been processed.
+                self.payslip_filename_var.set('')
+
                 messagebox.showinfo("Success", "Import completed.")
             else:
                 messagebox.showerror("Error", "The file is not a PDF format.")
