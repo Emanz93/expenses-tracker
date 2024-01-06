@@ -138,9 +138,11 @@ class App:
         payslip_entry.place(x=label_width+10, y=5, width=entry_width, height=cmp_height)
         
         select_payslip_btn = ttk.Button(payslips_frame, text="Select", command=self.select_payslip_btn_callback, style='Accentbutton')
+        select_payslip_btn.config(state="disabled")
         select_payslip_btn.place(x=label_width+10*2+entry_width, y=5, width=70, height=cmp_height)
 
         import_payslip_btn = ttk.Button(payslips_frame, text="Import", command=self.import_payslip_btn_callback, style='Accentbutton')
+        import_payslip_btn.config(state="disabled")
         import_payslip_btn.place(x=(frame_width/2)-35, y=15+cmp_height, width=70, height=cmp_height)
         
         # Exit button
