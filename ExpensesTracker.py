@@ -92,7 +92,11 @@ class App:
         highlightFont = font.Font(family='Helvetica', name='appHighlightFont', size=12, weight='bold')
         title_label = ttk.Label(self.root, text="Expenses Management", font=highlightFont)
         title_height = 32
-        title_label.place(x=(self.width/2)-(self.width/8), y=self.margin, width=200, height=title_height)
+        title_label.pack(side=tk.TOP, anchor='n', pady=self.margin)
+
+        # Version label
+        version_label = ttk.Label(self.root, text="1.1")
+        version_label.pack(side=tk.BOTTOM, anchor='se', padx=5, pady=5)
         
         # Label frames
         frame_height = 105
