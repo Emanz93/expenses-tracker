@@ -5,3 +5,4 @@ res/models/*
 *.ipynb
 test.py
 __pycache__
+.vscode
