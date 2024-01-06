@@ -20,7 +20,7 @@ from tkinter import filedialog, messagebox
 # TODO: do a better sampling of the data for the training -> rebalance the training set
 
 class ThreadCommunicator:
-    ''' Communication is the key! This class to help Threads to communicate better. '''
+    """ Communication is the key! This class to help Threads to communicate better. """
     def __init__(self):
         self.is_done = False
         self.message_queue = deque()
@@ -37,7 +37,7 @@ class App:
         # screen settings
         self.width = 600
         self.height = 350
-        self._set_screen_settings(title="Expences Management", width=self.width, height=self.height)
+        self._set_screen_settings(title="Expenses Management", width=self.width, height=self.height)
 
         # set the style
         self._set_azure_style()
@@ -90,7 +90,7 @@ class App:
 
         # Title label
         highlightFont = font.Font(family='Helvetica', name='appHighlightFont', size=12, weight='bold')
-        title_label = ttk.Label(self.root, text="Expences Management", font=highlightFont)
+        title_label = ttk.Label(self.root, text="Expenses Management", font=highlightFont)
         title_height = 32
         title_label.place(x=(self.width/2)-(self.width/8), y=self.margin, width=200, height=title_height)
         
@@ -166,8 +166,8 @@ class App:
         self.waiting_window.tk.call('wm', 'iconphoto', self.waiting_window._w, tk.PhotoImage(file=self.png_icon_path))
 
     def select_csv_btn_callback(self):
-        """ Callback to set the source CSV file of the expences. """
-        filename = filedialog.askopenfilename(title="Select expences file in CSV format...")
+        """ Callback to set the source CSV file of the expenses. """
+        filename = filedialog.askopenfilename(title="Select expenses file in CSV format...")
         if os.path.isfile(filename):
             self.csv_filename = filename
             self.csv_file_var.set(filename)
@@ -175,7 +175,7 @@ class App:
             messagebox.showerror("Error", "No input file selected.")
 
     def import_csv_btn_callback(self):
-        """ Callback to the import button. It imports the expences in gspread. """
+        """ Callback to the import button. It imports the expenses in gspread. """
         if self.csv_file_var.get() != '':
             if self.csv_filename.endswith('csv'):
                 try:
@@ -211,7 +211,7 @@ class App:
             else:
                 messagebox.showerror(title="Error", message="The file is not a CSV format.")
         else:
-            messagebox.showerror(title="Error", message="No expences file selected.")
+            messagebox.showerror(title="Error", message="No expenses file selected.")
 
     def select_payslip_btn_callback(self):
         """ Callback to set the source PDF file of the payslip. """
@@ -235,7 +235,7 @@ class App:
             else:
                 messagebox.showerror("Error", "The file is not a PDF format.")
         else:
-            messagebox.showerror("Error", "No expences file selected.")
+            messagebox.showerror("Error", "No expenses file selected.")
     
     def retrain_btn_callback(self):
         """ Callback to the button for retrain the classifier. """
@@ -264,9 +264,9 @@ class App:
             
             # destroy the waiting window
             self.waiting_window.destroy()
-            messagebox.showinfo("Success", "Expences classifier re-trained.")
+            messagebox.showinfo("Success", "Expenses classifier re-trained.")
         except Exception as e:
-            messagebox.showerror("Error", "Expences classifier failed the re-train. {}".format(e))
+            messagebox.showerror("Error", "Expenses classifier failed the re-train. {}".format(e))
             raise e
 
 
