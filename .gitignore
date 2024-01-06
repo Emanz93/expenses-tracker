@@ -6,3 +6,5 @@ res/models/*
 test.py
 __pycache__
 .vscode
+*.dist
+*.build
