@@ -310,12 +310,14 @@ def re_train_classifier(settings, communicator):
     communicator.message_queue.append('fetching years...')
     for year in sorted(years_worksheets.keys()):
         print(year)
-        # donwload from gspread all the records in the 'year' sheet in a pandas frame
+        # download from gspread all the records in the 'year' sheet in a pandas frame
         wsh = years_worksheets[year]
-        if df.empty:
-            df = pd.DataFrame(wsh.get_all_records())
-        else:
-            df = pd.merge(df, pd.DataFrame(wsh.get_all_records()), on=list(df.columns), how="outer")
+        yearly_records = wsh.get_all_records()
+        if yearly_records != []:
+            if df.empty:
+                df = pd.DataFrame(yearly_records)
+            else:
+                df = pd.merge(df, pd.DataFrame(yearly_records), on=list(df.columns), how="outer")
     
     train(df, settings, communicator)
     communicator.message_queue.append('Done')
