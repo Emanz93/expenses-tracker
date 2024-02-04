@@ -267,12 +267,16 @@ def import_expences(in_cvs_path, settings, communicator):
         wsh = None
         if year in worksheets.keys():
             # there is a worksheet having the same year.
-            # donwload from gspread all the records in the 'year' sheet in a pandas frame
+            # download from gspread all the records in the 'year' sheet in a pandas frame
             wsh = worksheets[year]
-            df_gd = pd.DataFrame(wsh.get_all_records())
-
-            # merge the downloaded pandas frame with the input csv pandas of the records of the same year. 
-            df_out = pd.merge(df_gd, df_class[df_class['date'].str.contains(year)], on=list(df_class.columns), how="outer")
+            all_year_records = wsh.get_all_records()
+            if all_year_records != []: # if it is not empty, I need to merge with the input dataframe.
+                df_gd = pd.DataFrame(all_year_records)
+                # merge the downloaded pandas frame with the input csv pandas of the records of the same year. 
+                df_out = pd.merge(df_gd, df_class[df_class['date'].str.contains(year)], on=list(df_class.columns), how="outer")
+            else:
+                # the spreadsheet is empty, no merge is required. The output dataframe is the one in input.
+                df_out = df_class[df_class['date'].str.contains(year)]
         else:
             # there are no worksheets having 'year' name, create a new one and fill the values from the input csv
             wsh = sh.add_worksheet(title=year, rows=1000, cols=100)
