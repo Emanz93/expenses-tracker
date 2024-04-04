@@ -272,6 +272,8 @@ def import_expences(in_cvs_path, settings, communicator):
             all_year_records = wsh.get_all_records()
             if all_year_records != []: # if it is not empty, I need to merge with the input dataframe.
                 df_gd = pd.DataFrame(all_year_records)
+                df_gd.drop(df_gd.columns.difference(settings['COLUMNS']), axis=1, inplace=True) # drop the extra columns that might have been downloaded by get_all_worksheets
+                
                 # merge the downloaded pandas frame with the input csv pandas of the records of the same year. 
                 df_out = pd.merge(df_gd, df_class[df_class['date'].str.contains(year)], on=list(df_class.columns), how="outer")
             else:
@@ -321,7 +323,9 @@ def re_train_classifier(settings, communicator):
             if df.empty:
                 df = pd.DataFrame(yearly_records)
             else:
-                df = pd.merge(df, pd.DataFrame(yearly_records), on=list(df.columns), how="outer")
+                df_yearly_records = pd.DataFrame(yearly_records)
+                df_yearly_records.drop(df_yearly_records.columns.difference(settings['COLUMNS']), axis=1, inplace=True) # drop extra columns
+                df = pd.merge(df, df_yearly_records, on=list(df.columns), how="outer")
     
     train(df, settings, communicator)
     communicator.message_queue.append('Done')
