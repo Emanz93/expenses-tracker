@@ -60,7 +60,9 @@ def check_which_bank(csv_path, settings):
     with open(csv_path) as csv_file:
         csv_lines = list(csv.reader(csv_file, delimiter=',', quotechar='"'))
     
-    # Check if the header is compliant with N26.
+    # Check if the header is compliant with N26 or ING.
+    # The check is performed on the fileds of the header line
+    # and on its position i.e. the raw number 
     N26_HEADER_LINE = settings['N26_HEADER_LINE']
     ING_HEADER_LINE = settings['ING_HEADER_LINE']
     if csv_lines[0] == list(N26_HEADER_LINE.keys()):
@@ -86,13 +88,13 @@ def ingest_N26_csv(csv_path, settings):
     csv_lines = csv_lines[1:]
 
     generic_lines = []
-    # construct the generic lines as per GENERIC_HEADER
+    # construct the generic lines as per GENERIC_HEADER mapping the header lines to the generic header lines
     # "Date", "Payee", "Reference", "Amount"
     N26_HEADER_LINE = settings["N26_HEADER_LINE"]
     for line in csv_lines:
-        date = line[N26_HEADER_LINE["Date"]]
-        payee = _preprocess(line[N26_HEADER_LINE["Payee"]])
-        reference = _preprocess(line[N26_HEADER_LINE["Payment reference"]])
+        date = line[N26_HEADER_LINE["Booking Date"]]
+        payee = _preprocess(line[N26_HEADER_LINE["Partner Name"]])
+        reference = _preprocess(line[N26_HEADER_LINE["Payment Reference"]])
         amount = line[N26_HEADER_LINE["Amount (EUR)"]]
         generic_lines.append([date,payee,reference,amount])
     

@@ -18,15 +18,17 @@
         "amount": "float"
     },
     "N26_HEADER_LINE": {
-        "Date": 0,
-        "Payee": 1,
-        "Account number": 2,
-        "Transaction type": 3,
-        "Payment reference": 4,
-        "Amount (EUR)": 5,
-        "Amount (Foreign Currency)": 6,
-        "Type Foreign Currency": 7,
-        "Exchange Rate": 8
+        "Booking Date": 0,
+        "Value Date": 1,
+        "Partner Name": 2,
+        "Partner Iban": 3,
+        "Type": 4,
+        "Payment Reference": 5,
+        "Account Name": 6,
+        "Amount (EUR)": 7,
+        "Original Amount": 8,
+        "Original Currency": 9,
+        "Exchange Rate": 10
     },
     "ING_HEADER_LINE": {
         "Buchung": 0,
