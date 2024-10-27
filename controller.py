@@ -17,8 +17,9 @@ from sklearn.ensemble import RandomForestClassifier
 
 # personal libraries
 from csv_lib import ingest_N26_csv, ingest_ING_csv, _preprocess, _get_month_int, check_which_bank
-from crypto_lib import *
+from crypto_lib import decrypt_file, encrypt_file
 
+# TODO: if no model file is present, than automatically run a training.
 
 def read_json(json_path):
     """ Read a json file.
