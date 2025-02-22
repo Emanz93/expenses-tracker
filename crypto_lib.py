@@ -19,7 +19,7 @@ def encrypt_message(message, password, salt=None):
     Returns:
         encrypted_data: String byte-encoded. Encrypted message.
     """
-    if not salt is None:
+    if salt is not None:
         salt = bytes(salt, encoding="utf8")
     
     kdf = PBKDF2HMAC(
@@ -68,7 +68,7 @@ def decrypt_message(encripted_message, password, salt=None):
     Raises:
         WrongPasswordException: when the message cannot be decrypted due to wrong password.
     """
-    if not salt is None:
+    if salt is not None:
         salt = bytes(salt, encoding="utf8")
 
     kdf = PBKDF2HMAC(
