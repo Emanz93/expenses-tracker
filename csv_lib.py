@@ -47,6 +47,28 @@ def _get_month_int(d):
     return dt.month
 
 
+def group_payee_on_same_day(df, payee_names):
+    """ Group the expences of the same payee by day, e.g sodexo service gmbh.
+    This preprocessing removes the information from the reference column.
+    Parameters:
+        df: DataFrame.
+        payee_names: list of strings. payee_names to be grouped. e.g sodexo service gmbh
+    Returns:
+        df: DataFrame.
+    """
+    for payee in payee_names:
+        # Group the transactions by date
+        df_sodexo = df[df['payee'] == payee].groupby("date", as_index=False).agg({"payee": lambda x:payee, "reference": lambda x: "", "amount": "sum"})
+        
+        # drop from the input dataframe the original transactions
+        df = df.drop(df[df['payee'] == payee].index)
+
+        # concatenate the two dataframes
+        df = pd.concat([df, df_sodexo], axis=0)
+
+    return df
+
+
 def check_which_bank(csv_path, settings):
     """ Check if the header line is the expected one and understand also which bank it belongs.
     Parameters:

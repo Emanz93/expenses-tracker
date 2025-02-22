@@ -95,7 +95,7 @@ class App:
         title_label.pack(side=tk.TOP, anchor='n', pady=self.margin)
 
         # Version label
-        version_label = ttk.Label(self.root, text="1.1.3")
+        version_label = ttk.Label(self.root, text="1.1.4")
         version_label.pack(side=tk.BOTTOM, anchor='se', padx=5, pady=5)
         
         # Label frames

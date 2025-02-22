@@ -16,7 +16,7 @@ from sklearn.metrics import classification_report, accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 
 # personal libraries
-from csv_lib import ingest_N26_csv, ingest_ING_csv, _preprocess, _get_month_int, check_which_bank
+from csv_lib import ingest_N26_csv, ingest_ING_csv, _preprocess, _get_month_int, check_which_bank, group_payee_on_same_day
 from crypto_lib import decrypt_file, encrypt_file
 
 # TODO: if no model file is present, than automatically run a training.
@@ -240,6 +240,9 @@ def import_expences(in_cvs_path, settings, communicator):
         print('Input csv is empty')
         messagebox.showwarning(title="Warning", message='Input csv is empty')
         return
+
+    # Group certain payees by date so that the number of rows is reduced
+    df_in = group_payee_on_same_day(df_in, settings["FILTERED_PAYEES"])
 
     # classify the input transactions in categories
     df_class = classify(df_in, settings, communicator)
