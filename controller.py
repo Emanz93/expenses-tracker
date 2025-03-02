@@ -19,7 +19,6 @@ from sklearn.ensemble import RandomForestClassifier
 from csv_lib import ingest_N26_csv, ingest_ING_csv, _preprocess, _get_month_int, check_which_bank, group_payee_on_same_day
 from crypto_lib import decrypt_file, encrypt_file
 
-# TODO: if no model file is present, than automatically run a training.
 
 def read_json(json_path):
     """ Read a json file.
@@ -58,6 +57,9 @@ def classify(df, settings, communicator):
     key = read_json('res/privacy_key.json')
 
     # load the required models: if not locally located, use the absolute path.
+
+    # TODO: if no model file is present, than automatically run a training.
+
     # ENCODER
     encoder_path = settings['MODEL_ENCODER_PATH']
     if not os.path.isfile(encoder_path):
@@ -209,7 +211,7 @@ def get_all_worksheets(sh, only_years=False):
     worksheets = dict()
     if only_years: # if only the years are in
         for x in sh.worksheets():
-            if re.search('^(20[0-9]{2})$', x.title) != None:
+            if re.search('^(20[0-9]{2})$', x.title) is not None:
                 worksheets[x.title] = x
     else:
         for x in sh.worksheets():
@@ -226,6 +228,12 @@ def import_expences(in_cvs_path, settings, communicator):
     """
     # check and ingest the CSV
     communicator.message_queue.append('Ingesting CSV')
+    # check if the file exists
+    if not os.path.isfile(in_cvs_path):
+        print('Input CSV is not a file')
+        messagebox.showerror(title="Error", message='Input CSV is not a file')
+        return
+        
     bank = check_which_bank(in_cvs_path, settings)
     if bank == 'N26':
         df_in = ingest_N26_csv(in_cvs_path, settings)
@@ -335,6 +343,7 @@ def re_train_classifier(settings, communicator):
     communicator.message_queue.append('Done')
     time.sleep(0.25)
     communicator.is_done = True # let the main thread know that we have finished here
+
 
 def import_payslips(in_cvs_path, settings, communicator):
     """ Import the payslisps.
