@@ -25,12 +25,18 @@ class ThreadCommunicator:
         self.is_done = False
         self.message_queue = deque()
 
+
 class App:
     """ Class that represent the GUI. """
     
     def __init__(self, r):
         """ Constructor of the graphical user interface """
         self.root = r
+        
+        if not os.path.exists('res/settings.json'):
+            print('Cannot find settings file: res/settings.json')
+            messagebox.showwarning(title="Error", message='Cannot find settings file: res/settings.json')
+            return
         
         self.settings = read_json('res/settings.json')
         
