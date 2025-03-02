@@ -66,6 +66,7 @@ def group_payee_on_same_day(df, payee_names):
         # concatenate the two dataframes
         df = pd.concat([df, df_sodexo], axis=0)
 
+    df = df.reset_index(drop=True) # reset the index
     return df
 
 
