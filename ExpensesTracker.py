@@ -189,7 +189,7 @@ class App:
 
         def worker():
             try:
-                target(*args)
+                target(*args, self.communicator)
             except Exception as e:
                 import traceback
                 self.communicator.traceback_str = traceback.format_exc()
@@ -241,22 +241,16 @@ class App:
             return
 
         # Check the file extension
+        self.csv_filename = self.csv_file_var.get()
         if not self.csv_filename.endswith('csv'):
             messagebox.showerror("Error", "The file is not a CSV format.")
             return
 
         # run the thread: import_expences
-        self._run_in_thread(import_expences, (self.csv_filename, self.settings, self.communicator), "Import completed.")
+        self._run_in_thread(import_expences, (self.csv_filename, self.settings), "Import completed.")
 
         # clear the input entry once processed
         self.csv_file_var.set('')
-
-        # success message
-        messagebox.showinfo(title="Info", message="Import completed.")
-
-        #except UnkownBankError:
-        #messagebox.showerror(title="Error", message="The CSV format is unexpected or is coming from an unsupported bank.")
-
 
     def select_payslip_btn_callback(self):
         """ Callback to set the source PDF file of the payslip. """
@@ -284,11 +278,7 @@ class App:
     
     def retrain_btn_callback(self):
         """ Callback to the button for retrain the classifier. """
-        self._run_in_thread(re_train_classifier, (self.settings, self.communicator), "Expenses classifier re-trained.")
-        messagebox.showinfo("Success", "Expenses classifier re-trained.")
-        #except Exception as e:
-        #    messagebox.showerror("Error", "Expenses classifier failed the re-train. {}".format(e))
-        #    raise e
+        self._run_in_thread(re_train_classifier, (self.settings,), "Expenses classifier re-trained.")
 
 
 # **************************
