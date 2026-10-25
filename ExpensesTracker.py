@@ -24,6 +24,8 @@ class ThreadCommunicator:
     def __init__(self):
         self.is_done = False
         self.message_queue = deque()
+        self.error = None  # Contains the exception raised by the worker thread
+        self.traceback_str = ''  # Contains the traceback for logging
 
 
 class App:
@@ -31,6 +33,7 @@ class App:
     
     def __init__(self, r):
         """ Constructor of the graphical user interface """
+        self.csv_filename = None
         self.root = r
         
         if not os.path.exists('res/settings.json'):
@@ -177,6 +180,49 @@ class App:
         # icon
         self.waiting_window.tk.call('wm', 'iconphoto', self.waiting_window._w, tk.PhotoImage(file=self.png_icon_path))
 
+    def _run_in_thread(self, target, args, success_message):
+        """ Run target in a worker thread, updating the waiting window.
+            Guarantees is_done is set even if target raises. """
+        self.communicator = ThreadCommunicator()
+        self.create_waiting_window()
+        self.root.update()
+
+        def worker():
+            try:
+                target(*args)
+            except Exception as e:
+                import traceback
+                self.communicator.traceback_str = traceback.format_exc()
+                print(self.communicator.traceback_str)
+                self.communicator.error = e
+            finally:
+                self.communicator.is_done = True  # ALWAYS set, even on failure
+
+        t = threading.Thread(target=worker, name='Controller-TH', daemon=True)
+        t.start()
+
+        # wait for the thread to complete
+        while not self.communicator.is_done:
+            try:
+                text = self.communicator.message_queue.popleft()
+            except IndexError:
+                pass  # no message available yet
+            else:
+                self.wait_label['text'] = text
+            self.root.update()
+            time.sleep(0.05)
+
+        self.waiting_window.destroy()
+
+        # report success or failure to the user
+        if self.communicator.error is not None:
+            if isinstance(self.communicator.error, UnkownBankError):
+                messagebox.showerror("Error", "The CSV format is unexpected or is coming from an unsupported bank.")
+            else:
+                messagebox.showerror("Error", "The operation failed: {}".format(self.communicator.error))
+        else:
+            messagebox.showinfo("Success", success_message)
+
     def select_csv_btn_callback(self):
         """ Callback to set the source CSV file of the expenses. """
         filename = filedialog.askopenfilename(title="Select expenses file in CSV format...")
@@ -188,42 +234,29 @@ class App:
 
     def import_csv_btn_callback(self):
         """ Callback to the import button. It imports the expenses in gspread. """
-        if self.csv_file_var.get() != '':
-            if self.csv_filename.endswith('csv'):
-                try:
-                    # start the waiting window in another thread.
-                    self.create_waiting_window()
-                    self.root.update()
 
-                    # start a thread to avoid the GUI to freeze
-                    t = threading.Thread(target=import_expences, name='Controller-TH', args=(self.csv_filename, self.settings, self.communicator))
-                    t.start()
+        # Check if there is a file in the input entry
+        if self.csv_file_var.get() == '':
+            messagebox.showerror("Error", "No expenses file selected.")
+            return
 
-                    # wait for the thead to be completed
-                    while not self.communicator.is_done:
-                        try:
-                            text = self.communicator.message_queue.popleft()
-                        except IndexError:
-                            time.sleep(0.1) # Ignore, if no text available.
-                        else:
-                            # update the text with what the communicator sent
-                            self.wait_label['text'] = text
-                            self.root.update()
+        # Check the file extension
+        if not self.csv_filename.endswith('csv'):
+            messagebox.showerror("Error", "The file is not a CSV format.")
+            return
 
-                    t.join()
-                    # destroy the waiting window
-                    self.waiting_window.destroy()
+        # run the thread: import_expences
+        self._run_in_thread(import_expences, (self.csv_filename, self.settings, self.communicator), "Import completed.")
 
-                    # clear the entry once the file has been processed.
-                    self.csv_file_var.set('')
+        # clear the input entry once processed
+        self.csv_file_var.set('')
 
-                    messagebox.showinfo(title="Info", message="Import completed.")
-                except UnkownBankError:
-                    messagebox.showerror(title="Error", message="The CSV format is unexpected or is coming from an unsupported bank.")
-            else:
-                messagebox.showerror(title="Error", message="The file is not a CSV format.")
-        else:
-            messagebox.showerror(title="Error", message="No expenses file selected.")
+        # success message
+        messagebox.showinfo(title="Info", message="Import completed.")
+
+        #except UnkownBankError:
+        #messagebox.showerror(title="Error", message="The CSV format is unexpected or is coming from an unsupported bank.")
+
 
     def select_payslip_btn_callback(self):
         """ Callback to set the source PDF file of the payslip. """
@@ -251,35 +284,11 @@ class App:
     
     def retrain_btn_callback(self):
         """ Callback to the button for retrain the classifier. """
-        self.communicator = ThreadCommunicator()
-        try:
-            # start the waiting window in another thread.
-            self.create_waiting_window()
-            self.root.update()
-
-            # start a thread to avoid the GUI to freeze
-            t = threading.Thread(target=re_train_classifier, name='Controller-TH', args=(self.settings, self.communicator))
-            t.start()
-
-            # wait for the thead to be completed
-            while not self.communicator.is_done:
-                try:
-                    text = self.communicator.message_queue.popleft()
-                except IndexError:
-                    time.sleep(0.1) # Ignore, if no text available.
-                else:
-                    
-                    self.wait_label['text'] = text
-                    self.root.update()
-
-            t.join()
-            
-            # destroy the waiting window
-            self.waiting_window.destroy()
-            messagebox.showinfo("Success", "Expenses classifier re-trained.")
-        except Exception as e:
-            messagebox.showerror("Error", "Expenses classifier failed the re-train. {}".format(e))
-            raise e
+        self._run_in_thread(re_train_classifier, (self.settings, self.communicator), "Expenses classifier re-trained.")
+        messagebox.showinfo("Success", "Expenses classifier re-trained.")
+        #except Exception as e:
+        #    messagebox.showerror("Error", "Expenses classifier failed the re-train. {}".format(e))
+        #    raise e
 
 
 # **************************

@@ -1,7 +1,6 @@
 import os
 import sys
 import time
-from tkinter import messagebox
 import gspread
 import joblib
 import pandas as pd
@@ -33,9 +32,9 @@ def read_json(json_path):
 
 
 def google_services(settings):
-    """ Connect with the google services. """
+    """ Connect with the Google services. """
     sa = gspread.service_account(filename=settings['G_SERVICE_KEYFILE'])
-    # open the google sheet and select the correct worksheet
+    # open the Google sheet and select the correct worksheet
     sh = sa.open(settings['G_SHEET_NAME'])
     print("Connected with Google Sheet: {}".format(settings['G_SHEET_NAME']))
     return sh
@@ -69,14 +68,14 @@ def classify(df, settings, communicator):
         encoder = joblib.load(encoderfile) # unpickle
     os.unlink(plain_encoder_path)
 
-    # VOCABOULARY
-    vocaboulary_path = settings['MODEL_VOCABOULARY_PATH']
-    if not os.path.isfile(vocaboulary_path):
-        vocaboulary_path = os.path.join(os.path.dirname(sys.argv[0]), vocaboulary_path)
-    plain_vocaboulary_path = decrypt_file(vocaboulary_path, key['key'], key['salt']) # decrypt
-    with open(plain_vocaboulary_path, 'rb') as vacfile:
-        vocaboulary = joblib.load(vacfile) # unpickle
-    os.unlink(plain_vocaboulary_path)
+    # VOCABULARY
+    vocabulary_path = settings['MODEL_VOCABOULARY_PATH']
+    if not os.path.isfile(vocabulary_path):
+        vocabulary_path = os.path.join(os.path.dirname(sys.argv[0]), vocabulary_path)
+    plain_vocabulary_path = decrypt_file(vocabulary_path, key['key'], key['salt']) # decrypt
+    with open(plain_vocabulary_path, 'rb') as vacfile:
+        vocabulary = joblib.load(vacfile) # unpickle
+    os.unlink(plain_vocabulary_path)
     
     # CLASSIFIER
     classifier_path = settings['MODEL_CLASSIFIER_PATH']
@@ -97,7 +96,7 @@ def classify(df, settings, communicator):
 
     # Vectorizer
     for feature in ['payee', 'reference']:
-        vectorizer = TfidfVectorizer(vocabulary=vocaboulary[feature])
+        vectorizer = TfidfVectorizer(vocabulary=vocabulary[feature])
         X = vectorizer.fit_transform(transactions[feature])
         x_in = pd.DataFrame(X.toarray())
         x_in.columns = x_in.columns.astype(str)
@@ -107,7 +106,7 @@ def classify(df, settings, communicator):
     # perform the prediction
     y_pred = classifier.predict(transactions)
     
-    # use the encoder to revert the encoded transformation, i.e. from uninay representation to labelized.
+    # use the encoder to revert the encoded transformation, i.e. from unary representation to labelized.
     df['category'] = encoder.inverse_transform(y_pred)
 
     return df
@@ -228,11 +227,11 @@ def import_expences(in_cvs_path, settings, communicator):
     """
     # check and ingest the CSV
     communicator.message_queue.append('Ingesting CSV')
+
     # check if the file exists
     if not os.path.isfile(in_cvs_path):
         print('Input CSV is not a file')
-        messagebox.showerror(title="Error", message='Input CSV is not a file')
-        return
+        raise ValueError('Input CSV is not a file')
         
     bank = check_which_bank(in_cvs_path, settings)
     if bank == 'N26':
@@ -242,12 +241,11 @@ def import_expences(in_cvs_path, settings, communicator):
         df_in = ingest_ING_csv(in_cvs_path, settings)
         print('Ingested ING CSV')
     else:
-        raise ValueError('Unkown bank!')
+        raise ValueError('Unknown bank!')
     
     if df_in.empty:
         print('Input csv is empty')
-        messagebox.showwarning(title="Warning", message='Input csv is empty')
-        return
+        raise ValueError('Input csv is empty')
 
     # Group certain payees by date so that the number of rows is reduced
     df_in = group_payee_on_same_day(df_in, settings["FILTERED_PAYEES"])
@@ -265,7 +263,7 @@ def import_expences(in_cvs_path, settings, communicator):
     # get the unique values of the year from the input csv. In this way, I download only the ones that are needed
     unique_years_in = set(x[:4] for x in df_class['date'].tolist()) # set of strings
 
-    # open the google sheet
+    # open the Google sheet
     sh = google_services(settings)
 
     # create a dict that contains the worksheets that are currently in gspread. 

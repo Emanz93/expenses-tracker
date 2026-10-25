@@ -125,8 +125,8 @@ def ingest_N26_csv(csv_path, settings):
     c = list(settings["GENERIC_HEADER"].keys())
     generic_df = pd.DataFrame(data=generic_lines, columns=c)
     generic_df = generic_df.astype(settings["GENERIC_HEADER_DTYPE"])
-    generic_df['payee'].fillna('', inplace=True)
-    generic_df['reference'].fillna('', inplace=True)
+    generic_df['payee'] = generic_df['payee'].fillna('')
+    generic_df['reference'] = generic_df['reference'].fillna('')
     return generic_df
 
 
@@ -161,6 +161,6 @@ def ingest_ING_csv(csv_path, settings):
     generic_df['amount'] = generic_df['amount'].str.replace('.', '', regex=False)
     generic_df['amount'] = generic_df['amount'].str.replace(',', '.', regex=False)
     generic_df = generic_df.astype(settings["GENERIC_HEADER_DTYPE"])
-    generic_df['payee'].fillna('', inplace=True)
-    generic_df['reference'].fillna('', inplace=True)
+    generic_df['payee'] = generic_df['payee'].fillna('')
+    generic_df['reference'] = generic_df['reference'].fillna('')
     return generic_df
