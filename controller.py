@@ -8,7 +8,7 @@ import re
 import json
 
 # scikit-learn
-from sklearn.preprocessing import LabelBinarizer
+from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics import classification_report, accuracy_score
@@ -74,7 +74,7 @@ def classify(df, settings, communicator):
         vocabulary_path = os.path.join(os.path.dirname(sys.argv[0]), vocabulary_path)
     plain_vocabulary_path = decrypt_file(vocabulary_path, key['key'], key['salt']) # decrypt
     with open(plain_vocabulary_path, 'rb') as vacfile:
-        vocabulary = joblib.load(vacfile) # unpickle
+        vectorizers = joblib.load(vacfile) # unpickle
     os.unlink(plain_vocabulary_path)
     
     # CLASSIFIER
@@ -96,8 +96,8 @@ def classify(df, settings, communicator):
 
     # Vectorizer
     for feature in ['payee', 'reference']:
-        vectorizer = TfidfVectorizer(vocabulary=vocabulary[feature])
-        X = vectorizer.fit_transform(transactions[feature])
+        #vectorizer = TfidfVectorizer(vocabulary=vocabulary[feature])
+        X = vectorizers[feature].transform(transactions[feature])
         x_in = pd.DataFrame(X.toarray())
         x_in.columns = ['{}_{}'.format(feature, c) for c in x_in.columns]  # same naming as in train()
         transactions = transactions.drop(feature, axis=1)
@@ -132,38 +132,31 @@ def train(transactions, settings, communicator):
     transactions['reference'] = transactions['reference'].fillna('')
     transactions['reference'] = transactions['reference'].apply(_preprocess)
 
+    encoder = LabelEncoder()
+
     # separate the category from the rest of the dataset
     tr_x = transactions.drop('category', axis=1) # transactions inputs
-    tr_y = transactions['category'].copy() # transactions category to be guessed
+    tr_y = encoder.fit_transform(transactions['category']) # transactions category to be guessed
 
     # remove the labels and append them as columns to the dataframe
-    encoder = LabelBinarizer()
-    tr_cat_1hot = encoder.fit_transform(tr_y)
-    tr_cat_prepared = pd.DataFrame(data=tr_cat_1hot, columns=encoder.classes_)
-
-    # convert the words in bag of words (CountVectorizer)
-    #vectorizer = CountVectorizer(max_features=1500, min_df=1, max_df=0.7)
-
-    # convert the words in TFIDF (TfidfVectorizer)
-    vectorizer = TfidfVectorizer(max_features=1500, min_df=5, max_df=0.7)
-    # X = tfidfconverter.fit_transform(list(tr_num['Payee'])).toarray()
+    #tr_cat_prepared = pd.DataFrame(data=tr_y, columns=encoder.classes_)
 
     # vectorize the textual fields. The original ones need to be dropped
-    vocabulary = dict()
+    vectorizers = dict()
     for feature in ['payee', 'reference']:
         vectorizer = TfidfVectorizer(max_features=1500, min_df=5, max_df=0.7)
         X = vectorizer.fit_transform(tr_x[feature]).toarray()
-        vocabulary[feature] = vectorizer.vocabulary_
+        vectorizers[feature] = vectorizer                     # keep the FITTED vectorizer
         x_in = pd.DataFrame(X)
         x_in.columns = ['{}_{}'.format(feature, c) for c in x_in.columns]  # e.g. 'payee_0', 'reference_0'
         tr_x = tr_x.drop(feature, axis=1)
         tr_x = pd.concat([tr_x, x_in], axis=1)
     
     # random_state allows to set the seed number
-    X_train, X_test, y_train, y_test = train_test_split(tr_x, tr_cat_prepared, test_size=0.2, random_state=42)
+    X_train, X_test, y_train, y_test = train_test_split(tr_x, tr_y, test_size=0.2, stratify=tr_y, random_state=42)
 
     # train a random forest classifier
-    classifier = RandomForestClassifier(n_estimators=2500)
+    classifier = RandomForestClassifier(n_estimators=2500, n_jobs=-1)
     classifier.fit(X_train, y_train)
 
     # predict the test
@@ -186,7 +179,7 @@ def train(transactions, settings, communicator):
 
     # save the vocabulary
     with open(settings['MODEL_VOCABOULARY_PATH'][:-4], 'wb') as picklefile:
-        joblib.dump(vocabulary, picklefile)
+        joblib.dump(vectorizers, picklefile)
     encrypt_file(settings['MODEL_VOCABOULARY_PATH'][:-4], key['key'], key['salt']) # ecrypt
     os.unlink(settings['MODEL_VOCABOULARY_PATH'][:-4]) # remove the plain file
     print('Saved vocabulary model in {}'.format(settings['MODEL_VOCABOULARY_PATH']))
