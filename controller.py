@@ -20,9 +20,9 @@ from crypto_lib import decrypt_file, encrypt_file
 
 
 def read_json(json_path):
-    """ Read a json file.
+    """ Read a JSON file.
     Parameters:
-        json_path: String. Path of the json file.
+        json_path: String. Path of the JSON file.
     Returns:
         d: dict. Content of the file.
     """
@@ -113,7 +113,7 @@ def classify(df, settings, communicator):
 
 
 def train(transactions, settings, communicator):
-    """ Re-train of the classifier, save locally the models and ecrypt them.
+    """ Re-train of the classifier, save locally the models and encrypt them.
     Parameters:
         transactions: pd.DataFrame. Input transactions with the classified
         settings: Dictionary.
@@ -184,14 +184,14 @@ def train(transactions, settings, communicator):
     os.unlink(settings['MODEL_CLASSIFIER_PATH'][:-4]) # remove the plain file
     print('Saved classifier model in {}'.format(settings['MODEL_CLASSIFIER_PATH']))
 
-    # save the vocaboulary
+    # save the vocabulary
     with open(settings['MODEL_VOCABOULARY_PATH'][:-4], 'wb') as picklefile:
         joblib.dump(vocabulary, picklefile)
     encrypt_file(settings['MODEL_VOCABOULARY_PATH'][:-4], key['key'], key['salt']) # ecrypt
     os.unlink(settings['MODEL_VOCABOULARY_PATH'][:-4]) # remove the plain file
-    print('Saved vocaboulary model in {}'.format(settings['MODEL_VOCABOULARY_PATH']))
+    print('Saved vocabulary model in {}'.format(settings['MODEL_VOCABOULARY_PATH']))
 
-    # save the vocaboulary
+    # save the vocabulary
     with open(settings['MODEL_ENCODER_PATH'][:-4], 'wb') as picklefile:
         joblib.dump(encoder, picklefile)
     encrypt_file(settings['MODEL_ENCODER_PATH'][:-4], key['key'], key['salt']) # ecrypt
@@ -218,10 +218,10 @@ def get_all_worksheets(sh, only_years=False):
     return worksheets
 
 
-def import_expences(in_cvs_path, settings, communicator):
+def import_expenses(in_cvs_path, settings, communicator):
     """ Import the CSV in gspread.
     Parameters:
-        in_csv_path: String. Path of the input csv file.
+        in_cvs_path: String. Path of the input csv file.
         settings: Dictionary.
         communicator: ThreadCommunicator. Object used to communicate with the main thread.
     """
@@ -314,7 +314,7 @@ def re_train_classifier(settings, communicator):
         communicator: ThreadCommunicator. Object used to communicate with the main thread.
     """
     communicator.message_queue.append('Re-training...')
-    # open the google sheet
+    # open the Google sheet
     sh = google_services(settings)
 
     # create a dict that contains the worksheets that are currently in gspread. 
@@ -344,7 +344,7 @@ def re_train_classifier(settings, communicator):
 
 
 def import_payslips(in_cvs_path, settings, communicator):
-    """ Import the payslisps.
+    """ Import the payslips.
     Parameters:
         settings: Dictionary.
         communicator: ThreadCommunicator. Object used to communicate with the main thread.

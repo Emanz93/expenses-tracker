@@ -5,8 +5,8 @@ from collections import deque
 import time
 
 # libraries
-from controller import read_json, import_expences, import_payslips, re_train_classifier
-from csv_lib import UnkownBankError
+from controller import read_json, import_expenses, import_payslips, re_train_classifier
+from csv_lib import UnknownBankError
 
 # tkinter
 import tkinter as tk
@@ -98,13 +98,13 @@ class App:
         self.margin = 20 # margin to be used across the gui
 
         # Title label
-        highlightFont = font.Font(family='Helvetica', name='appHighlightFont', size=12, weight='bold')
-        title_label = ttk.Label(self.root, text="Expenses Management", font=highlightFont)
+        highlight_font = font.Font(family='Helvetica', name='appHighlightFont', size=12, weight='bold')
+        title_label = ttk.Label(self.root, text="Expenses Management", font=highlight_font)
         title_height = 32
         title_label.pack(side=tk.TOP, anchor='n', pady=self.margin)
 
         # Version label
-        version_label = ttk.Label(self.root, text="1.1.4")
+        version_label = ttk.Label(self.root, text="1.1.5")
         version_label.pack(side=tk.BOTTOM, anchor='se', padx=5, pady=5)
         
         # Label frames
@@ -216,7 +216,7 @@ class App:
 
         # report success or failure to the user
         if self.communicator.error is not None:
-            if isinstance(self.communicator.error, UnkownBankError):
+            if isinstance(self.communicator.error, UnknownBankError):
                 messagebox.showerror("Error", "The CSV format is unexpected or is coming from an unsupported bank.")
             else:
                 messagebox.showerror("Error", "The operation failed: {}".format(self.communicator.error))
@@ -246,8 +246,8 @@ class App:
             messagebox.showerror("Error", "The file is not a CSV format.")
             return
 
-        # run the thread: import_expences
-        self._run_in_thread(import_expences, (self.csv_filename, self.settings), "Import completed.")
+        # run the thread: import_expenses
+        self._run_in_thread(import_expenses, (self.csv_filename, self.settings), "Import completed.")
 
         # clear the input entry once processed
         self.csv_file_var.set('')
@@ -262,7 +262,7 @@ class App:
             messagebox.showerror("Error", "No input file selected.")
 
     def import_payslip_btn_callback(self):
-        """ Callback to the import button. It imports the payslisps in gspread. """
+        """ Callback to the import button. It imports the payslips in gspread. """
         if self.payslip_filename_var.get() != '':
             if self.payslip_filename.endswith('pdf'):
                 import_payslips(self.payslip_filename, self.settings)
