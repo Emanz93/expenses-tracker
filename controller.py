@@ -199,26 +199,6 @@ def train(transactions, settings, communicator):
     _save_encrypted_model(classifier, settings['MODEL_CLASSIFIER_PATH'], key['key'], key['salt'])
     _save_encrypted_model(vectorizers, settings['MODEL_VOCABOULARY_PATH'], key['key'], key['salt'])
     _save_encrypted_model(encoder, settings['MODEL_ENCODER_PATH'], key['key'], key['salt'])
-    """
-    with open(settings['MODEL_CLASSIFIER_PATH'][:-4], 'wb') as picklefile:
-        joblib.dump(classifier, picklefile)
-    encrypt_file(settings['MODEL_CLASSIFIER_PATH'][:-4], key['key'], key['salt']) # ecrypt
-    os.unlink(settings['MODEL_CLASSIFIER_PATH'][:-4]) # remove the plain file
-    print('Saved classifier model in {}'.format(settings['MODEL_CLASSIFIER_PATH']))
-
-    # save the vocabulary
-    with open(settings['MODEL_VOCABOULARY_PATH'][:-4], 'wb') as picklefile:
-        joblib.dump(vectorizers, picklefile)
-    encrypt_file(settings['MODEL_VOCABOULARY_PATH'][:-4], key['key'], key['salt']) # ecrypt
-    os.unlink(settings['MODEL_VOCABOULARY_PATH'][:-4]) # remove the plain file
-    print('Saved vocabulary model in {}'.format(settings['MODEL_VOCABOULARY_PATH']))
-
-    # save the vocabulary
-    with open(settings['MODEL_ENCODER_PATH'][:-4], 'wb') as picklefile:
-        joblib.dump(encoder, picklefile)
-    encrypt_file(settings['MODEL_ENCODER_PATH'][:-4], key['key'], key['salt']) # ecrypt
-    os.unlink(settings['MODEL_ENCODER_PATH'][:-4]) # remove the plain file
-    print('Saved encoder model in {}'.format(settings['MODEL_ENCODER_PATH'])) """
 
 
 def get_all_worksheets(sh, only_years=False):
