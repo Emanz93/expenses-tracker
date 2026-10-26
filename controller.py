@@ -99,7 +99,7 @@ def classify(df, settings, communicator):
         vectorizer = TfidfVectorizer(vocabulary=vocabulary[feature])
         X = vectorizer.fit_transform(transactions[feature])
         x_in = pd.DataFrame(X.toarray())
-        x_in.columns = x_in.columns.astype(str)
+        x_in.columns = ['{}_{}'.format(feature, c) for c in x_in.columns]  # same naming as in train()
         transactions = transactions.drop(feature, axis=1)
         transactions = pd.concat([transactions, x_in], axis=1)
 
@@ -155,12 +155,12 @@ def train(transactions, settings, communicator):
         X = vectorizer.fit_transform(tr_x[feature]).toarray()
         vocabulary[feature] = vectorizer.vocabulary_
         x_in = pd.DataFrame(X)
-        x_in.columns = x_in.columns.astype(str)
+        x_in.columns = ['{}_{}'.format(feature, c) for c in x_in.columns]  # e.g. 'payee_0', 'reference_0'
         tr_x = tr_x.drop(feature, axis=1)
         tr_x = pd.concat([tr_x, x_in], axis=1)
     
     # random_state allows to set the seed number
-    X_train, X_test, y_train, y_test = train_test_split(tr_x, tr_cat_prepared, test_size=0.2)
+    X_train, X_test, y_train, y_test = train_test_split(tr_x, tr_cat_prepared, test_size=0.2, random_state=42)
 
     # train a random forest classifier
     classifier = RandomForestClassifier(n_estimators=2500)
@@ -170,7 +170,7 @@ def train(transactions, settings, communicator):
     y_pred = classifier.predict(X_test)
 
     # evaluate the model
-    print(classification_report(y_test,y_pred, target_names=encoder.classes_))
+    print(classification_report(y_test,y_pred, target_names=encoder.classes_, zero_division=0))
     print('Accuracy score: {}'.format(accuracy_score(y_test, y_pred)))
 
     # load the key
