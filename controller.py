@@ -5,7 +5,10 @@ import gspread
 import joblib
 import pandas as pd
 import re
+import tempfile
 import json
+import shutil
+from pathlib import Path
 
 # scikit-learn
 from sklearn.preprocessing import LabelEncoder
@@ -40,6 +43,52 @@ def google_services(settings):
     return sh
 
 
+def _load_encrypted_model(encrypted_path, key, salt):
+    """ Load the encrypted model from the path specified. If not locally located, use the absolute path.
+    Parameters:
+        encrypted_path
+        key
+        salt
+    """
+    if not os.path.isfile(encrypted_path):
+        encrypted_path = os.path.join(os.path.dirname(sys.argv[0]), encrypted_path)
+    plain = decrypt_file(encrypted_path, key, salt)
+    with open(plain, 'rb') as f:
+        model = joblib.load(f)
+    os.unlink(plain)
+    return model
+
+
+def _save_encrypted_model(model, encrypted_path, key, salt):
+    """ Saves an ML model/object securely by dumping it to a temporary file, encrypting it to the final destination,
+    and ensuring plaintext files are always cleaned up (even if a crash occurs).
+    """
+    # Create a secure temporary file for the plaintext dump
+    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+        temp_path = temp_file.name
+        joblib.dump(model, temp_file)
+        encrypted_temp_path = Path(encrypt_file(temp_path, key, key))
+
+    try:
+        final_p = Path(encrypted_path).resolve()
+        shutil.move(str(encrypted_temp_path), str(final_p))
+
+        print(f'Saved {model} model in {final_p}')
+
+    finally: # Guarantee cleanup of any remaining plaintext files on error or success
+        if os.path.exists(str(temp_path)):
+            try:
+                os.unlink(str(temp_path))
+            except OSError:
+                pass
+
+        if os.path.exists(str(encrypted_temp_path)):
+            try:
+                os.unlink(str(encrypted_temp_path))
+            except OSError:
+                pass
+
+
 def classify(df, settings, communicator):
     """ Perform the classification task. It uses the classified model saved in a pickle file along with the 
     hot encoder used for the target label unary transformation. It adds the 'category' column to the input 
@@ -51,40 +100,16 @@ def classify(df, settings, communicator):
     Returns:
         df: pd.DataFrame. Output dataframe with the category feature populated.
     """
-    communicator.message_queue.append('Loading models')
+    communicator.message_queue.append('Loading models...')
     # load the key
     key = read_json('res/privacy_key.json')
 
-    # load the required models: if not locally located, use the absolute path.
-
     # TODO: if no model file is present, than automatically run a training.
 
-    # ENCODER
-    encoder_path = settings['MODEL_ENCODER_PATH']
-    if not os.path.isfile(encoder_path):
-        encoder_path = os.path.join(os.path.dirname(sys.argv[0]), encoder_path)
-    plain_encoder_path = decrypt_file(encoder_path, key['key'], key['salt']) # decrypt
-    with open(plain_encoder_path, 'rb') as encoderfile:
-        encoder = joblib.load(encoderfile) # unpickle
-    os.unlink(plain_encoder_path)
-
-    # VOCABULARY
-    vocabulary_path = settings['MODEL_VOCABOULARY_PATH']
-    if not os.path.isfile(vocabulary_path):
-        vocabulary_path = os.path.join(os.path.dirname(sys.argv[0]), vocabulary_path)
-    plain_vocabulary_path = decrypt_file(vocabulary_path, key['key'], key['salt']) # decrypt
-    with open(plain_vocabulary_path, 'rb') as vacfile:
-        vectorizers = joblib.load(vacfile) # unpickle
-    os.unlink(plain_vocabulary_path)
-    
-    # CLASSIFIER
-    classifier_path = settings['MODEL_CLASSIFIER_PATH']
-    if not os.path.isfile(classifier_path):
-        classifier_path = os.path.join(os.path.dirname(sys.argv[0]), classifier_path)
-    plain_classifier_path = decrypt_file(classifier_path, key['key'], key['salt']) # decrypt
-    with open(plain_classifier_path, 'rb') as classifierfile:
-        classifier = joblib.load(classifierfile) # unpickle
-    os.unlink(plain_classifier_path)
+    # Load the encrypted models: ENCODER, VOCABULARY and CLASSIFIER
+    encoder = _load_encrypted_model(settings['MODEL_ENCODER_PATH'], key['key'], key['salt'])
+    vectorizers = _load_encrypted_model(settings['MODEL_VOCABOULARY_PATH'], key['key'], key['salt'])
+    classifier = _load_encrypted_model(settings['MODEL_CLASSIFIER_PATH'], key['key'], key['salt'])
 
     communicator.message_queue.append('Classifying...')
 
@@ -171,6 +196,10 @@ def train(transactions, settings, communicator):
     communicator.message_queue.append('Saving models')
 
     # save the model of the random forest:
+    _save_encrypted_model(classifier, settings['MODEL_CLASSIFIER_PATH'], key['key'], key['salt'])
+    _save_encrypted_model(vectorizers, settings['MODEL_VOCABOULARY_PATH'], key['key'], key['salt'])
+    _save_encrypted_model(encoder, settings['MODEL_ENCODER_PATH'], key['key'], key['salt'])
+    """
     with open(settings['MODEL_CLASSIFIER_PATH'][:-4], 'wb') as picklefile:
         joblib.dump(classifier, picklefile)
     encrypt_file(settings['MODEL_CLASSIFIER_PATH'][:-4], key['key'], key['salt']) # ecrypt
@@ -189,7 +218,7 @@ def train(transactions, settings, communicator):
         joblib.dump(encoder, picklefile)
     encrypt_file(settings['MODEL_ENCODER_PATH'][:-4], key['key'], key['salt']) # ecrypt
     os.unlink(settings['MODEL_ENCODER_PATH'][:-4]) # remove the plain file
-    print('Saved encoder model in {}'.format(settings['MODEL_ENCODER_PATH']))
+    print('Saved encoder model in {}'.format(settings['MODEL_ENCODER_PATH'])) """
 
 
 def get_all_worksheets(sh, only_years=False):
