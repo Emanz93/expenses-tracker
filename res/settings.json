@@ -40,5 +40,6 @@
         "Wahrung": 6,
         "Betrag": 7,
         "Wahrung2": 8
-    }
+    },
+    "FILTERED_PAYEES":["sodexo service gmbh", "sodexo services gmbh"]
 }
