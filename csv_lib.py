@@ -135,7 +135,7 @@ def ingest_N26_csv(csv_path, settings):
 def ingest_ING_csv(csv_path, settings):
     """ Ingest, check and pre-process a CSV file taken from ING.
     Parameters:
-        csv_path: string. Path of the CSV file to ingest..
+        csv_path: string. Path of the CSV file to ingest.
         settings: dict.
     Returns:
         generic_lines: List of list of strings respecting the generic header. 
@@ -152,7 +152,7 @@ def ingest_ING_csv(csv_path, settings):
     # 25.10.2022 ;  25.10.2022;    TELESPAZIO GERMANY GMBH;   Gehalt/Rente;  GEHALT 10/22;  4.922,75;EUR;3.185,53;EUR
     ING_HEADER_LINE = settings["ING_HEADER_LINE"]
     for line in csv_lines:
-        date = _preprocess_date(line[ING_HEADER_LINE['Valuta']])
+        date = _preprocess_date(line[ING_HEADER_LINE['Buchung']])
         payee = _preprocess(line[ING_HEADER_LINE['Auftraggeber/Empfanger']])
         reference = _preprocess(line[ING_HEADER_LINE['Verwendungszweck']])
         amount = line[ING_HEADER_LINE['Betrag']]

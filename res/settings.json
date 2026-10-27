@@ -32,14 +32,15 @@
     },
     "ING_HEADER_LINE": {
         "Buchung": 0,
-        "Valuta": 1,
+        "Wertstellungsdatum": 1,
         "Auftraggeber/Empfanger": 2,
         "Buchungstext": 3,
         "Verwendungszweck": 4,
-        "Saldo": 5,
-        "Wahrung": 6,
-        "Betrag": 7,
-        "Wahrung2": 8
+        "Referenz": 5,
+        "Saldo": 6,
+        "Wahrung": 7,
+        "Betrag": 8,
+        "Wahrung2": 9
     },
     "FILTERED_PAYEES":["sodexo service gmbh", "sodexo services gmbh"]
 }
