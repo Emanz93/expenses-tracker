@@ -53,10 +53,11 @@ def _load_encrypted_model(encrypted_path, key, salt):
     if not os.path.isfile(encrypted_path):
         encrypted_path = os.path.join(os.path.dirname(sys.argv[0]), encrypted_path)
     plain = decrypt_file(encrypted_path, key, salt)
-    with open(plain, 'rb') as f:
-        model = joblib.load(f)
-    os.unlink(plain)
-    return model
+    try:
+        with open(plain, 'rb') as f:
+            return joblib.load(f)
+    finally:
+        os.unlink(plain)
 
 
 def _save_encrypted_model(model, encrypted_path, key, salt):
@@ -68,24 +69,24 @@ def _save_encrypted_model(model, encrypted_path, key, salt):
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_path = temp_file.name
             joblib.dump(model, temp_file)
-            encrypted_temp_path = Path(encrypt_file(temp_path, key, salt))
-
+        encrypted_temp_path = Path(encrypt_file(temp_path, key, salt))
 
         final_p = Path(encrypted_path).resolve()
         shutil.move(str(encrypted_temp_path), str(final_p))
 
-        print(f'Saved {model} model in {final_p}')
+        print(f'Saved model in {final_p}')
 
-    finally: # Guarantee cleanup of any remaining plaintext files on error or success
-        if os.path.exists(str(temp_path)):
+
+    finally:
+        if temp_path is not None and os.path.exists(temp_path):
             try:
-                os.unlink(str(temp_path))
+                os.unlink(temp_path)
             except OSError:
                 pass
 
-        if os.path.exists(str(encrypted_temp_path)):
+        if encrypted_temp_path is not None and os.path.exists(encrypted_temp_path):
             try:
-                os.unlink(str(encrypted_temp_path))
+                os.unlink(encrypted_temp_path)
             except OSError:
                 pass
 
