@@ -64,12 +64,13 @@ def _save_encrypted_model(model, encrypted_path, key, salt):
     and ensuring plaintext files are always cleaned up (even if a crash occurs).
     """
     # Create a secure temporary file for the plaintext dump
-    with tempfile.NamedTemporaryFile(delete=False) as temp_file:
-        temp_path = temp_file.name
-        joblib.dump(model, temp_file)
-        encrypted_temp_path = Path(encrypt_file(temp_path, key, key))
-
     try:
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_path = temp_file.name
+            joblib.dump(model, temp_file)
+            encrypted_temp_path = Path(encrypt_file(temp_path, key, salt))
+
+
         final_p = Path(encrypted_path).resolve()
         shutil.move(str(encrypted_temp_path), str(final_p))
 
