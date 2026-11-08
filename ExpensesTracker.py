@@ -18,7 +18,8 @@ from tkinter import filedialog, messagebox
 
 # TODO: double check the duplicates in the import phase -> hex(hash(...))
 # TODO: exclude certain categories from the training
-# TODO: Review ingestion of CSV files
+# TODO: review ingestion of CSV files
+# TODO: review parallelisation
 
 class ThreadCommunicator:
     """ Communication is the key! This class to help Threads to communicate better. """
