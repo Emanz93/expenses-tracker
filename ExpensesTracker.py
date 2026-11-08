@@ -17,7 +17,8 @@ from tkinter import filedialog, messagebox
 """ ExpensesTracker """
 
 # TODO: double check the duplicates in the import phase -> hex(hash(...))
-# TODO: do a better sampling of the data for the training -> rebalance the training set
+# TODO: exclude certain categories from the training
+# TODO: Review ingestion of CSV files
 
 class ThreadCommunicator:
     """ Communication is the key! This class to help Threads to communicate better. """
