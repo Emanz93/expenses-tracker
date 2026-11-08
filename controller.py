@@ -1,6 +1,6 @@
 import os
 import sys
-import time
+import io
 import gspread
 import joblib
 import pandas as pd
@@ -19,7 +19,7 @@ from sklearn.ensemble import RandomForestClassifier
 
 # personal libraries
 from csv_lib import ingest_N26_csv, ingest_ING_csv, _preprocess, _get_month_int, check_which_bank, group_payee_on_same_day
-from crypto_lib import decrypt_file, encrypt_file
+from crypto_lib import encrypt_file, decrypt_file_in_memory
 
 
 def read_json(json_path):
@@ -52,12 +52,8 @@ def _load_encrypted_model(encrypted_path, key, salt):
     """
     if not os.path.isfile(encrypted_path):
         encrypted_path = os.path.join(os.path.dirname(sys.argv[0]), encrypted_path)
-    plain = decrypt_file(encrypted_path, key, salt)
-    try:
-        with open(plain, 'rb') as f:
-            return joblib.load(f)
-    finally:
-        os.unlink(plain)
+    decrypted_bytes = decrypt_file_in_memory(encrypted_path, key, salt)
+    return joblib.load(io.BytesIO(decrypted_bytes))
 
 
 def _save_encrypted_model(model, encrypted_path, key, salt):
