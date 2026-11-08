@@ -26,7 +26,7 @@ def encrypt_message(message, password, salt=None):
         algorithm=hashes.SHA256(),
         length=32,
         salt=salt,
-        iterations=500000
+        iterations=1000000
         )
     key = base64.urlsafe_b64encode(kdf.derive(password.encode()))
     keymaster = Fernet(key)
