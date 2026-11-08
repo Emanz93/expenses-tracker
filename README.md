@@ -1,5 +1,5 @@
 ## expenses-tracker
-Tracks the expenses in a google sheet.
+Tracks the expenses in a Google sheet.
 
 # Dependencies
 The following python modules are required:
@@ -12,4 +12,4 @@ The following python modules are required:
 
 # How to compile
 
-    python -m nuitka --mingw64 --assume-yes-for-downloads --standalone --follow-imports --enable-plugin=tk-inter --include-data-dir=res=./res --remove-output --windows-icon-from-ico=res/wallet.ico --file-version=1.1.4 ExpensesTracker.py
+    python -m nuitka --mingw64 --assume-yes-for-downloads --standalone --enable-plugin=tk-inter --include-data-dir=res=./res --windows-console-mode=disable --remove-output --windows-icon-from-ico=res/wallet.ico --file-version=1.1.5 --product-version=1.1.5 --product-name="ExpensesTracker" --file-description="Expenses Management" --jobs=8 ExpensesTracker.py
