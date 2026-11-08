@@ -1,7 +1,7 @@
 import os
 import sys
 import threading
-from collections import deque
+from queue import Queue, Empty
 import time
 
 # libraries
@@ -24,17 +24,17 @@ from tkinter import filedialog, messagebox
 class ThreadCommunicator:
     """ Communication is the key! This class to help Threads to communicate better. """
     def __init__(self):
-        self.is_done = False
-        self.message_queue = deque()
-        self.error = None  # Contains the exception raised by the worker thread
-        self.traceback_str = ''  # Contains the traceback for logging
-
+        self.is_done = threading.Event()   # set by the worker when finished, checked by the GUI
+        self.message_queue = Queue()       # thread-safe message queue: worker puts, GUI gets
+        self.error = None                  # Contains the exception raised by the worker thread
+        self.traceback_str = ''            # Contains the traceback for logging
 
 class App:
     """ Class that represent the GUI. """
     
     def __init__(self, r):
         """ Constructor of the graphical user interface """
+        self._worker_running = False  # re-entrancy guard for _run_in_thread
         self.csv_filename = None
         self.root = r
         
@@ -185,9 +185,11 @@ class App:
     def _run_in_thread(self, target, args, success_message):
         """ Run target in a worker thread, updating the waiting window.
             Guarantees is_done is set even if target raises. """
+        if self._worker_running:
+            messagebox.showwarning("Busy", "An operation is already running. Please wait.")
+            return
+        self._worker_running = True
         self.communicator = ThreadCommunicator()
-        self.create_waiting_window()
-        self.root.update()
 
         def worker():
             try:
@@ -198,32 +200,46 @@ class App:
                 print(self.communicator.traceback_str)
                 self.communicator.error = e
             finally:
-                self.communicator.is_done = True  # ALWAYS set, even on failure
+                self.communicator.is_done.set()  # ALWAYS set, even on failure
 
-        t = threading.Thread(target=worker, name='Controller-TH', daemon=True)
-        t.start()
-
-        # wait for the thread to complete
-        while not self.communicator.is_done:
-            try:
-                text = self.communicator.message_queue.popleft()
-            except IndexError:
-                pass  # no message available yet
-            else:
-                self.wait_label['text'] = text
+        try:
+            self.create_waiting_window()
             self.root.update()
-            time.sleep(0.05)
 
-        self.waiting_window.destroy()
+            t = threading.Thread(target=worker, name='Controller-TH', daemon=True)
+            t.start()
 
-        # report success or failure to the user
-        if self.communicator.error is not None:
-            if isinstance(self.communicator.error, UnknownBankError):
-                messagebox.showerror("Error", "The CSV format is unexpected or is coming from an unsupported bank.")
+            # wait for the thread to complete
+            while not self.communicator.is_done.is_set():
+                try:
+                    text = self.communicator.message_queue.get_nowait()
+                except Empty:
+                    pass  # no message available yet
+                else:
+                    self.wait_label['text'] = text
+                self.root.update()
+                time.sleep(0.05)
+
+            # drain the messages that lost the race with is_done
+            while True:
+                try:
+                    text = self.communicator.message_queue.get_nowait()
+                except Empty:
+                    break
+                self.wait_label['text'] = text
+
+            self.waiting_window.destroy()
+
+            # report success or failure to the user
+            if self.communicator.error is not None:
+                if isinstance(self.communicator.error, UnknownBankError):
+                    messagebox.showerror("Error", "The CSV format is unexpected or is coming from an unsupported bank.")
+                else:
+                    messagebox.showerror("Error", "The operation failed: {}".format(self.communicator.error))
             else:
-                messagebox.showerror("Error", "The operation failed: {}".format(self.communicator.error))
-        else:
-            messagebox.showinfo("Success", success_message)
+                messagebox.showinfo("Success", success_message)
+        finally:
+            self._worker_running = False
 
     def select_csv_btn_callback(self):
         """ Callback to set the source CSV file of the expenses. """

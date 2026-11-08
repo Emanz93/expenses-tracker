@@ -65,6 +65,8 @@ def _save_encrypted_model(model, encrypted_path, key, salt):
     and ensuring plaintext files are always cleaned up (even if a crash occurs).
     """
     # Create a secure temporary file for the plaintext dump
+    temp_path = None
+    encrypted_temp_path = None
     try:
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             temp_path = temp_file.name
@@ -102,7 +104,7 @@ def classify(df, settings, communicator):
     Returns:
         df: pd.DataFrame. Output dataframe with the category feature populated.
     """
-    communicator.message_queue.append('Loading models...')
+    communicator.message_queue.put('Loading models...')
     # load the key
     key = read_json('res/privacy_key.json')
 
@@ -113,7 +115,7 @@ def classify(df, settings, communicator):
     vectorizers = _load_encrypted_model(settings['MODEL_VOCABOULARY_PATH'], key['key'], key['salt'])
     classifier = _load_encrypted_model(settings['MODEL_CLASSIFIER_PATH'], key['key'], key['salt'])
 
-    communicator.message_queue.append('Classifying...')
+    communicator.message_queue.put('Classifying...')
 
     # preprocessing
     transactions = df.copy()
@@ -147,7 +149,7 @@ def train(transactions, settings, communicator):
         communicator: ThreadCommunicator. Object used to communicate with the main thread.
     """
     # preprocessing
-    communicator.message_queue.append('Training...')
+    communicator.message_queue.put('Training...')
     for feature in list(transactions.columns): # delete the features that are not needed
         if feature not in ['payee', 'reference', 'category', 'amount']:
             # drop the useless features
@@ -183,7 +185,7 @@ def train(transactions, settings, communicator):
     X_train, X_test, y_train, y_test = train_test_split(tr_x, tr_y, test_size=0.2, stratify=tr_y, random_state=42)
 
     # train a random forest classifier
-    classifier = RandomForestClassifier(n_estimators=2500, n_jobs=-1)
+    classifier = RandomForestClassifier(n_estimators=500, n_jobs=-1)
     classifier.fit(X_train, y_train)
 
     # predict the test
@@ -195,7 +197,7 @@ def train(transactions, settings, communicator):
 
     # load the key
     key = read_json('res/privacy_key.json')
-    communicator.message_queue.append('Saving models')
+    communicator.message_queue.put('Saving models')
 
     # save the model of the random forest:
     _save_encrypted_model(classifier, settings['MODEL_CLASSIFIER_PATH'], key['key'], key['salt'])
@@ -230,7 +232,7 @@ def import_expenses(in_cvs_path, settings, communicator):
         communicator: ThreadCommunicator. Object used to communicate with the main thread.
     """
     # check and ingest the CSV
-    communicator.message_queue.append('Ingesting CSV')
+    communicator.message_queue.put('Ingesting CSV')
 
     # check if the file exists
     if not os.path.isfile(in_cvs_path):
@@ -277,7 +279,7 @@ def import_expenses(in_cvs_path, settings, communicator):
     # loop each year
     for year in sorted(unique_years_in):
         print('Uploading {}'.format(year))
-        communicator.message_queue.append('Uploading {}...'.format(year))
+        communicator.message_queue.put('Uploading {}...'.format(year))
         wsh = None
         if year in worksheets.keys():
             # there is a worksheet having the same year.
@@ -306,9 +308,7 @@ def import_expenses(in_cvs_path, settings, communicator):
         # finally update the output df in the target year sheet
         wsh.update([df_out.columns.values.tolist()] + df_out.values.tolist())
     
-    communicator.message_queue.append('Done!')
-    time.sleep(0.25) # give the time to the GUI to react
-    communicator.is_done = True # signal that the ingestion thread is done.
+    communicator.message_queue.put('Done!')
 
 
 def re_train_classifier(settings, communicator):
@@ -317,7 +317,7 @@ def re_train_classifier(settings, communicator):
         settings: Dictionary.
         communicator: ThreadCommunicator. Object used to communicate with the main thread.
     """
-    communicator.message_queue.append('Re-training...')
+    communicator.message_queue.put('Re-training...')
     # open the Google sheet
     sh = google_services(settings)
 
@@ -327,7 +327,7 @@ def re_train_classifier(settings, communicator):
 
     df = pd.DataFrame()
     print("fetching...")
-    communicator.message_queue.append('fetching years...')
+    communicator.message_queue.put('fetching years...')
     for year in sorted(years_worksheets.keys()):
         print(year)
         # download from gspread all the records in the 'year' sheet in a pandas frame
@@ -342,9 +342,7 @@ def re_train_classifier(settings, communicator):
                 df = pd.merge(df, df_yearly_records, on=list(df.columns), how="outer")
     
     train(df, settings, communicator)
-    communicator.message_queue.append('Done')
-    time.sleep(0.25)
-    communicator.is_done = True # let the main thread know that we have finished here
+    communicator.message_queue.put('Done!')
 
 
 def import_payslips(in_cvs_path, settings, communicator):
