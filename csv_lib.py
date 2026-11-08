@@ -26,11 +26,11 @@ def _preprocess(s):
 
 
 def _preprocess_date(date_str):
-    """ Convert the date string from %d.%m.%y to %y-%m-%d.
+    """ Convert the date string from %d.%m.%Y to %Y-%m-%d.
     Parameter:
-        date_str: String. Date in %d.%m.%y format.
+        date_str: String. Date in %d.%m.%Y format.
     Returns:
-        String. Date in %y-%m-%d format.
+        String. Date in %Y-%m-%d format.
     """
     d = datetime.strptime(date_str, '%d.%m.%Y')
     return d.strftime('%Y-%m-%d')
@@ -56,7 +56,9 @@ def group_payee_on_same_day(df, payee_names):
     Returns:
         df: DataFrame.
     """
-    for payee in payee_names:
+    for raw_payee in payee_names:
+        payee = _preprocess(raw_payee)  # Apply the same normalization the data went through
+
         # Group the transactions by date
         df_sodexo = df[df['payee'] == payee].groupby("date", as_index=False).agg({"payee": lambda x:payee, "reference": lambda x: "", "amount": "sum"})
         
@@ -81,20 +83,19 @@ def check_which_bank(csv_path, settings):
         UnknownBankError: the CSV is unrecognized.
     """
     # read the lines
-    with open(csv_path) as csv_file:
+    with open(csv_path, encoding='utf-8-sig', errors='replace') as csv_file:
         csv_lines = list(csv.reader(csv_file, delimiter=',', quotechar='"'))
-    
-    # Check if the header is compliant with N26 or ING.
-    # The check is performed on the fields of the header line
-    # and on its position i.e. the raw number 
-    N26_HEADER_LINE = settings['N26_HEADER_LINE']
-    ING_HEADER_LINE = settings['ING_HEADER_LINE']
-    if csv_lines[0] == list(N26_HEADER_LINE.keys()):
+
+    if not csv_lines or not csv_lines[0]:
+        raise UnknownBankError('The CSV file is empty')
+
+    if csv_lines[0] == list(settings['N26_HEADER_LINE'].keys()):
         return 'N26'
-    elif csv_lines[13][0].startswith('Buchung'): # Check if the header is compliant with ING.
-        return 'ING'
-    else:
-        raise UnknownBankError('Header not respecting neither N26 nor the ING header')
+        # scan for the ING header instead of trusting a fixed line number
+    for line in csv_lines[:20]:
+        if line and line[0].startswith('Buchung'):
+            return 'ING'
+    raise UnknownBankError('Header not respecting neither N26 nor the ING header')
 
 
 def ingest_N26_csv(csv_path, settings):
@@ -106,7 +107,7 @@ def ingest_N26_csv(csv_path, settings):
         generic_df: pd.DataFrame.
     """
     # read the lines
-    with open(csv_path) as csv_file:
+    with open(csv_path, encoding='utf-8-sig') as csv_file:
         csv_lines = list(csv.reader(csv_file, delimiter=',', quotechar='"'))
         
     # remove the first line that contains the header
@@ -141,7 +142,7 @@ def ingest_ING_csv(csv_path, settings):
         generic_lines: List of list of strings respecting the generic header. 
     """
     # read the lines
-    with open(csv_path) as csv_file:
+    with open(csv_path, encoding='cp1252') as csv_file:
         csv_lines = list(csv.reader(csv_file, delimiter=';'))
 
     csv_lines = csv_lines[14:] # remove the first line that contains the header
