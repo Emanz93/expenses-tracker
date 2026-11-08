@@ -18,7 +18,7 @@ from sklearn.metrics import classification_report, accuracy_score
 from sklearn.ensemble import RandomForestClassifier
 
 # personal libraries
-from csv_lib import ingest_N26_csv, ingest_ING_csv, _preprocess, _get_month_int, check_which_bank, group_payee_on_same_day
+from csv_lib import _preprocess, _get_month_int, ingest_csv
 from crypto_lib import encrypt_file, decrypt_file_in_memory
 
 
@@ -29,7 +29,7 @@ def read_json(json_path):
     Returns:
         d: dict. Content of the file.
     """
-    with open(json_path, 'r') as f:
+    with open(json_path, 'r', encoding='utf-8') as f:
         d = json.load(f)
     return d
 
@@ -104,7 +104,7 @@ def classify(df, settings, communicator):
     # load the key
     key = read_json('res/privacy_key.json')
 
-    # TODO: if no model file is present, than automatically run a training.
+    # TODO: automatically run the training if no model file is present.
 
     # Load the encrypted models: ENCODER, VOCABULARY and CLASSIFIER
     encoder = _load_encrypted_model(settings['MODEL_ENCODER_PATH'], key['key'], key['salt'])
@@ -230,38 +230,17 @@ def import_expenses(in_cvs_path, settings, communicator):
     # check and ingest the CSV
     communicator.message_queue.put('Ingesting CSV')
 
-    # check if the file exists
-    if not os.path.isfile(in_cvs_path):
-        print('Input CSV is not a file')
-        raise ValueError('Input CSV is not a file')
-        
-    bank = check_which_bank(in_cvs_path, settings)
-    if bank == 'N26':
-        df_in = ingest_N26_csv(in_cvs_path, settings)
-        print('Ingested N26 CSV')
-    elif bank == 'ING':
-        df_in = ingest_ING_csv(in_cvs_path, settings)
-        print('Ingested ING CSV')
-    else:
-        raise ValueError('Unknown bank!')
-    
-    if df_in.empty:
-        print('Input csv is empty')
-        raise ValueError('Input csv is empty')
-
-    # Group certain payees by date so that the number of rows is reduced
-    df_in = group_payee_on_same_day(df_in, settings["FILTERED_PAYEES"])
+    # ingest the file
+    df_in, bank = ingest_csv(in_cvs_path, settings)
 
     # classify the input transactions in categories
     df_class = classify(df_in, settings, communicator)
 
     # add the extra fields required for the visualization in gspread
+    # TODO: consider to move this into the ingest_csv. This must be done for the batch ingestion feature.
     df_class['bank'] = bank # add the element
     df_class['month'] = df_class['date'].apply(_get_month_int) # add a column with the month in integer format
     
-    # reorder the pandas frame columns
-    #df_class = df_class[ df_class.columns[ [1,2,3,4,5,6,7,0] ] ]
-
     # get the unique values of the year from the input csv. In this way, I download only the ones that are needed
     unique_years_in = set(x[:4] for x in df_class['date'].tolist()) # set of strings
 

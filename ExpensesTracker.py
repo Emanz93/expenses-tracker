@@ -35,7 +35,9 @@ class App:
     
     def __init__(self, r):
         """ Constructor of the graphical user interface """
-        self._worker_running = False  # re-entrancy guard for _run_in_thread
+        self.wait_label = None
+        self.waiting_window = None
+        self._worker_running = False  # re-entrance guard for _run_in_thread
         self.csv_filename = None
         self.root = r
         
@@ -108,7 +110,7 @@ class App:
         title_label.pack(side=tk.TOP, anchor='n', pady=self.margin)
 
         # Version label
-        version_label = ttk.Label(self.root, text="1.1.5")
+        version_label = ttk.Label(self.root, text="1.1.6")
         version_label.pack(side=tk.BOTTOM, anchor='se', padx=5, pady=5)
         
         # Label frames
@@ -129,7 +131,7 @@ class App:
         csv_entry = ttk.Entry(csv_frame, textvariable=self.csv_file_var)
         entry_width = 400
         csv_entry.place(x=label_width+10, y=5, width=entry_width, height=cmp_height)
-        
+
         select_csv_btn = ttk.Button(csv_frame, text="Select", command=self.select_csv_btn_callback, style='Accent.TButton')
         select_csv_btn.place(x=label_width+10*2+entry_width, y=5, width=70, height=cmp_height)
 
@@ -285,7 +287,7 @@ class App:
         """ Callback to the import button. It imports the payslips in gspread. """
         if self.payslip_filename_var.get() != '':
             if self.payslip_filename.endswith('pdf'):
-                import_payslips(self.payslip_filename, self.settings)
+                import_payslips(self.payslip_filename, self.settings, self.communicator)
 
                 # clear the entry once the file has been processed.
                 self.payslip_filename_var.set('')
