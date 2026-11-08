@@ -20,6 +20,7 @@ from tkinter import filedialog, messagebox
 # TODO: exclude certain categories from the training
 # TODO: review ingestion of CSV files
 # TODO: review parallelisation
+# TODO: automatically aggregate the same bar and restaurants entries, within the same day
 
 class ThreadCommunicator:
     """ Communication is the key! This class to help Threads to communicate better. """
@@ -93,7 +94,8 @@ class App:
             # if not locally called, use the absolute path.
             style_path = os.path.join(os.path.dirname(sys.argv[0]), style_path)
         self.root.tk.call('source', style_path)
-        self.style.theme_use('azure')
+        self.root.tk.call("set_theme", "light")
+        #self.style.theme_use('azure')
 
     def _create_main_frame(self):
         """ Create the main frame """
@@ -128,13 +130,13 @@ class App:
         entry_width = 400
         csv_entry.place(x=label_width+10, y=5, width=entry_width, height=cmp_height)
         
-        select_csv_btn = ttk.Button(csv_frame, text="Select", command=self.select_csv_btn_callback, style='Accentbutton')
+        select_csv_btn = ttk.Button(csv_frame, text="Select", command=self.select_csv_btn_callback, style='Accent.TButton')
         select_csv_btn.place(x=label_width+10*2+entry_width, y=5, width=70, height=cmp_height)
 
-        import_csv_btn = ttk.Button(csv_frame, text="Import CSV", command=self.import_csv_btn_callback, style='Accentbutton')
+        import_csv_btn = ttk.Button(csv_frame, text="Import CSV", command=self.import_csv_btn_callback, style='Accent.TButton')
         import_csv_btn.place(x=(frame_width/2)-130, y=15+cmp_height, width=120, height=cmp_height)
 
-        retrain_csv_btn = ttk.Button(csv_frame, text="Retrain Classifier", command=self.retrain_btn_callback, style='Accentbutton')
+        retrain_csv_btn = ttk.Button(csv_frame, text="Retrain Classifier", command=self.retrain_btn_callback, style='Accent.TButton')
         retrain_csv_btn.place(x=(frame_width/2)+10, y=15+cmp_height, width=120, height=cmp_height)
 
         # Payslips selection section
@@ -148,16 +150,16 @@ class App:
         entry_width = 370
         payslip_entry.place(x=label_width+10, y=5, width=entry_width, height=cmp_height)
         
-        select_payslip_btn = ttk.Button(payslips_frame, text="Select", command=self.select_payslip_btn_callback, style='Accentbutton')
+        select_payslip_btn = ttk.Button(payslips_frame, text="Select", command=self.select_payslip_btn_callback, style='Accent.TButton')
         select_payslip_btn.config(state="disabled")
         select_payslip_btn.place(x=label_width+10*2+entry_width, y=5, width=70, height=cmp_height)
 
-        import_payslip_btn = ttk.Button(payslips_frame, text="Import", command=self.import_payslip_btn_callback, style='Accentbutton')
+        import_payslip_btn = ttk.Button(payslips_frame, text="Import", command=self.import_payslip_btn_callback, style='Accent.TButton')
         import_payslip_btn.config(state="disabled")
         import_payslip_btn.place(x=(frame_width/2)-35, y=15+cmp_height, width=70, height=cmp_height)
         
         # Exit button
-        exit_btn = ttk.Button(self.root, text="Exit", command=sys.exit, style='Accentbutton')
+        exit_btn = ttk.Button(self.root, text="Exit", command=sys.exit, style='Accent.TButton')
         exit_btn.place(x=(self.width/2)-40, y=self.height-cmp_height-self.margin, width=80, height=cmp_height)
 
     def create_waiting_window(self):
