@@ -225,17 +225,6 @@ def get_all_worksheets(sh, only_years=False):
     return worksheets
 
 
-def _get_review_flag(confidence, threshold):
-    """Determine if a transaction needs review based on confidence score.
-    Parameters:
-        confidence: float. The confidence score (0-1).
-        threshold: float. The confidence threshold.
-    Returns:
-        String. 'review' if confidence < threshold, else empty string.
-    """
-    return 'review' if confidence <= threshold else ''
-
-
 def import_expenses(in_cvs_path, settings, communicator):
     """ Import the CSV in gspread.
     Parameters:
