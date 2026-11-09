@@ -12,4 +12,4 @@ The following python modules are required:
 
 # How to compile
 
-    python -m nuitka --mingw64 --assume-yes-for-downloads --standalone --enable-plugin=tk-inter --enable-plugin=dill-compat --include-data-dir=res=./res --windows-console-mode=disable --remove-output --windows-icon-from-ico=res/wallet.ico --file-version=1.1.6 --product-version=1.1.6 --product-name="ExpensesTracker" --file-description="Expenses Management" --jobs=8 ExpensesTracker.py
+    python -m nuitka --mingw64 --assume-yes-for-downloads --standalone --enable-plugin=tk-inter --enable-plugin=dill-compat --include-data-dir=res=./res --windows-console-mode=disable --remove-output --windows-icon-from-ico=res/wallet.ico --file-version=1.2.0 --product-version=1.2.0 --product-name="ExpensesTracker" --file-description="Expenses Management" --jobs=8 ExpensesTracker.py

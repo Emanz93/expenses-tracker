@@ -4,7 +4,8 @@
     "MODEL_ENCODER_PATH": "res/models/encoder.aes",
     "MODEL_CLASSIFIER_PATH": "res/models/text_classifier.aes",
     "MODEL_VOCABOULARY_PATH": "res/models/vocaboulary.aes",
-    "COLUMNS":["date", "payee", "reference", "amount", "category", "bank", "month"],
+    "COLUMNS":["date", "payee", "reference", "amount", "category", "confidence", "needs_review","bank", "month"],
+    "CONFIDENCE_THRESHOLD": 0.7,
     "GENERIC_HEADER": {
         "date": 0,
         "payee": 1,

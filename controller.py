@@ -98,7 +98,7 @@ def classify(df, settings, communicator):
         settings: Dictionary.
         communicator: ThreadCommunicator. Object used to communicate with the main thread.
     Returns:
-        df: pd.DataFrame. Output dataframe with the category feature populated.
+        df: pd.DataFrame. Output dataframe with two new columns: the 'category' and 'confidence' features populated.
     """
     communicator.message_queue.put('Loading models...')
     # load the key
@@ -128,12 +128,17 @@ def classify(df, settings, communicator):
         transactions = transactions.drop(feature, axis=1)
         transactions = pd.concat([transactions, x_in], axis=1)
 
-    # perform the prediction
+    # perform the prediction of the categories
     y_pred = classifier.predict(transactions)
+
+    # Get the confidence
+    y_proba = classifier.predict_proba(transactions)
+    max_proba = y_proba.max(axis=1)  # Maximum probability for each row
     
     # use the encoder to revert the encoded transformation, i.e. from unary representation to labelized.
     df['category'] = encoder.inverse_transform(y_pred)
-
+    df['confidence'] = max_proba
+    
     return df
 
 
@@ -220,6 +225,17 @@ def get_all_worksheets(sh, only_years=False):
     return worksheets
 
 
+def _get_review_flag(confidence, threshold):
+    """Determine if a transaction needs review based on confidence score.
+    Parameters:
+        confidence: float. The confidence score (0-1).
+        threshold: float. The confidence threshold.
+    Returns:
+        String. 'review' if confidence < threshold, else empty string.
+    """
+    return 'review' if confidence <= threshold else ''
+
+
 def import_expenses(in_cvs_path, settings, communicator):
     """ Import the CSV in gspread.
     Parameters:
@@ -234,15 +250,27 @@ def import_expenses(in_cvs_path, settings, communicator):
     df_in, bank = ingest_csv(in_cvs_path, settings)
 
     # classify the input transactions in categories
-    df_class = classify(df_in, settings, communicator)
+    df_classified = classify(df_in, settings, communicator)
+
+    # TODO: consider to move this into the ingest_csv. This must be done for the batch ingestion feature.
+
+    # Derive needs_review from confidence and prepare statistics
+    df_classified['needs_review'] = ['review' if c < settings['CONFIDENCE_THRESHOLD'] else '' for c in df_classified['confidence']]
+
+    low_confidence_count = (df_classified['needs_review'] == 'review').sum()
+
+    # Remove confidence column (not needed for upload)
+    # df_classified = df_classified.drop(columns=['confidence'])
+
+    # Format final message for GUI
+    final_message = f"Import complete: {len(df_classified)} transactions, {low_confidence_count} flagged for review (<{int(settings['CONFIDENCE_THRESHOLD'] * 100)}%)"
 
     # add the extra fields required for the visualization in gspread
-    # TODO: consider to move this into the ingest_csv. This must be done for the batch ingestion feature.
-    df_class['bank'] = bank # add the element
-    df_class['month'] = df_class['date'].apply(_get_month_int) # add a column with the month in integer format
+    df_classified['bank'] = bank # add the bank name
+    df_classified['month'] = df_classified['date'].apply(_get_month_int) # add a column with the month in integer format
     
-    # get the unique values of the year from the input csv. In this way, I download only the ones that are needed
-    unique_years_in = set(x[:4] for x in df_class['date'].tolist()) # set of strings
+    # get the unique values of the year from the input csv. In this way, only the ones that are needed is downloaded.
+    unique_years_in = set(x[:4] for x in df_classified['date'].tolist()) # set of strings
 
     # open the Google sheet
     sh = google_services(settings)
@@ -264,16 +292,21 @@ def import_expenses(in_cvs_path, settings, communicator):
             if all_year_records != []: # if it is not empty, I need to merge with the input dataframe.
                 df_gd = pd.DataFrame(all_year_records)
                 df_gd.drop(df_gd.columns.difference(settings['COLUMNS']), axis=1, inplace=True) # drop the extra columns that might have been downloaded by get_all_worksheets
-                
-                # merge the downloaded pandas frame with the input csv pandas of the records of the same year. 
-                df_out = pd.merge(df_gd, df_class[df_class['date'].str.contains(year)], on=list(df_class.columns), how="outer")
+
+                try:
+                    # merge the downloaded pandas frame with the input csv pandas of the records of the same year.
+                    df_out = pd.merge(df_gd, df_classified[df_classified['date'].str.contains(year)], on=list(df_classified.columns), how="outer")
+                except KeyError as e:
+                    # The merge can fail in case of inconsistent header of the table wrt the df.
+                    print('Expenses header issue. Merge failed between the downloaded expenses with the classified ones.')
+                    raise KeyError('Expenses header issue. Merge failed between the downloaded expenses with the classified ones.')
             else:
                 # the spreadsheet is empty, no merge is required. The output dataframe is the one in input.
-                df_out = df_class[df_class['date'].str.contains(year)]
+                df_out = df_classified[df_classified['date'].str.contains(year)]
         else:
             # there are no worksheets having 'year' name, create a new one and fill the values from the input csv
             wsh = sh.add_worksheet(title=year, rows=1000, cols=100)
-            df_out = df_class[df_class['date'].str.contains(year)]
+            df_out = df_classified[df_classified['date'].str.contains(year)]
             worksheets[year] = wsh
         
         # delete the duplicates
@@ -283,7 +316,7 @@ def import_expenses(in_cvs_path, settings, communicator):
         # finally update the output df in the target year sheet
         wsh.update([df_out.columns.values.tolist()] + df_out.values.tolist())
     
-    communicator.message_queue.put('Done!')
+    communicator.message_queue.put(final_message)
 
 
 def re_train_classifier(settings, communicator):
