@@ -18,6 +18,8 @@ def _preprocess(s):
     Returns:
         s: String.
     """
+    if s is None or not isinstance(s, str):
+        return ''
     s = re.sub(r'\W', ' ', s) # remove special chars
     s = s.strip() # remove leading and trailing whitespaces
     s = re.sub(r'\s+', ' ', s, flags=re.I) # remove multiple whitespaces
@@ -90,7 +92,6 @@ def _generic_df_preprocessing(df, settings):
 
     # Apply type conversion
     df = df.astype(settings["GENERIC_HEADER_DTYPE"])
-    df['amount'] = df['amount'].round(2)
 
     # Fill NaN in string columns
     df['payee'] = df['payee'].fillna('')
