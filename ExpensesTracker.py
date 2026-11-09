@@ -16,11 +16,14 @@ from tkinter import filedialog, messagebox
 
 """ ExpensesTracker """
 
-# TODO: double check the duplicates in the import phase -> hex(hash(...))
-# TODO: exclude certain categories from the training
-# TODO: review ingestion of CSV files
-# TODO: review parallelisation
+# TODO: the classification shall add a "needs review" flag for entries with classification with low confidence
+# TODO: add multi-file import
+# TODO: pre-fill the newest csv when starting the application
 # TODO: automatically aggregate the same bar and restaurants entries, within the same day
+
+# TODO: double check the duplicates in the import phase -> hex(hash(...))
+# TODO: exclude certain categories from the training, e.g. miscellaneous and wedding.
+# TODO: review parallelisation at import time (models files) and training
 
 class ThreadCommunicator:
     """ Communication is the key! This class to help Threads to communicate better. """
@@ -247,7 +250,9 @@ class App:
 
     def select_csv_btn_callback(self):
         """ Callback to set the source CSV file of the expenses. """
-        filename = filedialog.askopenfilename(title="Select expenses file in CSV format...")
+        filename = filedialog.askopenfilename(
+            title="Select expenses file in CSV format...",
+            initialdir=os.path.join(os.path.expanduser('~'), "Downloads"))
         if os.path.isfile(filename):
             self.csv_filename = filename
             self.csv_file_var.set(filename)
