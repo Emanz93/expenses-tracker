@@ -250,8 +250,13 @@ def import_expenses(in_files_list, settings, communicator):
     else:
         df_in = pd.concat(all_dfs, ignore_index=True)
 
-    # classify the input transactions in categories
-    df_classified = classify(df_in, settings, communicator)
+    bank_column = df_in['bank']
+
+    # classify the input transactions in categories, without the bank information
+    df_classified = classify(df_in.drop(columns=['bank']), settings, communicator)
+
+    # Add bank column back after classification
+    df_classified['bank'] = bank_column
 
     # Derive needs_review from confidence and prepare statistics
     df_classified['needs_review'] = ['review' if c < settings['CONFIDENCE_THRESHOLD'] else '' for c in df_classified['confidence']]
