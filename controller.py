@@ -225,37 +225,47 @@ def get_all_worksheets(sh, only_years=False):
     return worksheets
 
 
-def import_expenses(in_cvs_path, settings, communicator):
+def import_expenses(in_files_list, settings, communicator):
     """ Import the CSV in gspread.
     Parameters:
-        in_cvs_path: String. Path of the input csv file.
+        in_files_list: List of String(s). Paths of the input csv file(s).
         settings: Dictionary.
         communicator: ThreadCommunicator. Object used to communicate with the main thread.
     """
     # check and ingest the CSV
-    communicator.message_queue.put('Ingesting CSV')
+    communicator.message_queue.put('Ingesting CSV files...')
 
-    # ingest the file
-    df_in, bank = ingest_csv(in_cvs_path, settings)
+    # ingest the file and add bank column to each df
+    all_dfs = []
+    for in_csv_file in in_files_list:
+        df, bank = ingest_csv(in_csv_file, settings)
+        df['bank'] = bank  # Add bank column before merging
+        all_dfs.append(df)
+
+    # Merge all dataframes into one
+    if len(all_dfs) == 0:
+        raise ValueError("No valid CSV files to import")
+    elif len(all_dfs) == 1:
+        df_in = all_dfs[0]
+    else:
+        df_in = pd.concat(all_dfs, ignore_index=True)
 
     # classify the input transactions in categories
     df_classified = classify(df_in, settings, communicator)
 
-    # TODO: consider to move this into the ingest_csv. This must be done for the batch ingestion feature.
-
     # Derive needs_review from confidence and prepare statistics
     df_classified['needs_review'] = ['review' if c < settings['CONFIDENCE_THRESHOLD'] else '' for c in df_classified['confidence']]
 
+    # Count the number of entries with a low confidence. Used for the final success message.
     low_confidence_count = (df_classified['needs_review'] == 'review').sum()
 
-    # Remove confidence column (not needed for upload)
+    # TODO: Remove confidence column (as well from the settings.json) once I am sure it works reliably.
     # df_classified = df_classified.drop(columns=['confidence'])
 
     # Format final message for GUI
     final_message = f"Import complete: {len(df_classified)} transactions, {low_confidence_count} flagged for review (<{int(settings['CONFIDENCE_THRESHOLD'] * 100)}%)"
 
-    # add the extra fields required for the visualization in gspread
-    df_classified['bank'] = bank # add the bank name
+    # add the month column
     df_classified['month'] = df_classified['date'].apply(_get_month_int) # add a column with the month in integer format
     
     # get the unique values of the year from the input csv. In this way, only the ones that are needed is downloaded.
@@ -342,7 +352,7 @@ def re_train_classifier(settings, communicator):
     communicator.message_queue.put('Done!')
 
 
-def import_payslips(in_cvs_path, settings, communicator):
+def import_payslips(in_csv_path, settings, communicator):
     """ Import the payslips.
     Parameters:
         settings: Dictionary.

@@ -41,7 +41,7 @@ class App:
         self.wait_label = None
         self.waiting_window = None
         self._worker_running = False  # re-entrance guard for _run_in_thread
-        self.csv_filename = None
+        self.csv_filenames = []
         self.root = r
         
         if not os.path.exists('res/settings.json'):
@@ -250,12 +250,13 @@ class App:
 
     def select_csv_btn_callback(self):
         """ Callback to set the source CSV file of the expenses. """
-        filename = filedialog.askopenfilename(
-            title="Select expenses file in CSV format...",
-            initialdir=os.path.join(os.path.expanduser('~'), "Downloads"))
-        if os.path.isfile(filename):
-            self.csv_filename = filename
-            self.csv_file_var.set(filename)
+        filenames = filedialog.askopenfilenames(
+            title="Select expenses file(s) in CSV format...",
+            initialdir=os.path.join(os.path.expanduser('~'), "Downloads"),
+        )
+        if filenames and len(filenames) > 0:
+            self.csv_filenames = list(filenames)
+            self.csv_file_var.set(f"{len(self.csv_filenames)} file(s) selected")
         else:
             messagebox.showerror("Error", "No input file selected.")
 
@@ -263,18 +264,18 @@ class App:
         """ Callback to the import button. It imports the expenses in gspread. """
 
         # Check if there is a file in the input entry
-        if self.csv_file_var.get() == '':
+        if self.csv_file_var.get() == '' or len(self.csv_filenames) == 0:
             messagebox.showerror("Error", "No expenses file selected.")
             return
 
-        # Check the file extension
-        self.csv_filename = self.csv_file_var.get()
-        if not self.csv_filename.endswith('csv'):
-            messagebox.showerror("Error", "The file is not a CSV format.")
-            return
+        # Check all files have the csv extension
+        for filename in self.csv_filenames:
+            if not filename.endswith('csv'):
+                messagebox.showerror("Error", f"The file '{filename}' is not a CSV format.")
+                return
 
         # run the thread: import_expenses
-        self._run_in_thread(import_expenses, (self.csv_filename, self.settings), "Import completed.")
+        self._run_in_thread(import_expenses, (self.csv_filenames, self.settings), "Import completed.")
 
         # clear the input entry once processed
         self.csv_file_var.set('')
